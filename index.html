@@ -2,18 +2,27 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <link rel="icon" type="image/png" href="assets/icon.png">
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+    <link rel="manifest" href="manifest.webmanifest">
     <title>Google Play Music UI Clone</title>
     <meta name="description" content="Responsive front-end recreation of the Google Play Music web UI in plain HTML, CSS and JavaScript. Unofficial fan project, not affiliated with Google.">
     <meta name="theme-color" content="#ef6c00">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Play Music">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta property="og:title" content="Google Play Music UI Clone">
     <meta property="og:description" content="Responsive Google Play Music web UI recreation in vanilla HTML, CSS and JS. UI demo only.">
     <meta property="og:image" content="assets/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/ios.css">
 </head>
 <!-- Unofficial fan project. Not affiliated with or endorsed by Google. UI demo only. -->
 <body>
@@ -32,7 +41,7 @@
             <div class="header-actions">
                 <i class="material-icons">apps</i>
                 <i class="material-icons">notifications</i>
-                <div class="profile-pic" style="background-image: url('https://via.placeholder.com/32');"></div>
+                <div class="profile-pic"></div>
             </div>
         </div>
     </header>
@@ -434,5 +443,6 @@
 
     <script src="js/app.js"></script>
     <script src="js/ui.js"></script>
+    <script src="js/pwa.js"></script>
 </body>
 </html>

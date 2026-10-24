@@ -7,7 +7,7 @@ Status key: ⬜ not started · 🟨 in progress · ✅ done
 | Phase | Name | Status |
 | --- | --- | --- |
 | 0 | Baseline and docs | ✅ |
-| 1 | Ship-ready shell: Vercel, PWA, offline, iPhone safe areas | ⬜ |
+| 1 | Ship-ready shell: Vercel, PWA, offline, iPhone safe areas | 🟨 built; waiting on your iPhone check |
 | 2 | Real playback engine | ⬜ |
 | 3 | Your library: import, store, browse | ⬜ |
 | 4 | Playlists, queue and mixes | ⬜ |
@@ -42,57 +42,53 @@ Status key: ⬜ not started · 🟨 in progress · ✅ done
 
 ---
 
-## Phase 1: Ship-ready shell
+## Phase 1: Ship-ready shell 🟨
 
 **Goal:** the current UI deploys to Vercel, installs from Safari with "Add to Home Screen", opens full-screen with no browser bars, still opens in airplane mode, and fills the iPhone screen properly at the top and bottom.
 
-### 1a. Vercel deploy
-- Static site, no framework, no build command.
-- `vercel.json` with response headers:
-  - `sw.js` is never cached by the browser, so updates are picked up.
-  - Correct content type for the web manifest.
-- Exclude `docs/` from the deploy so the roadmap isn't public (`.vercelignore`).
-- If the repo has the project inside a `google-play-music/` folder, Vercel's **Root Directory** must point at it so `index.html` is at the deploy root.
+**Status:** all code is written and tested in a desktop browser that imitates an iPhone. It is not finished until you deploy it and run `docs/testing-on-iphone.md` on a real iPhone.
 
-### 1b. Installable app (PWA)
-- `manifest.webmanifest`: name, short name, `display: standalone`, theme and background colour, icons.
-- Icons made properly for iOS. The current icon has transparent corners, which iOS renders with a black background, so we need full-bleed versions (180, 192, 512, plus a maskable one). The 256 px source is too small to scale up cleanly to 512, so I'll redraw it as a vector and export from that.
-- iOS meta tags: `apple-mobile-web-app-capable`, status bar style, `apple-touch-icon`, app title.
+### What was built
 
-### 1c. Offline
-- Service worker (`sw.js`) at the site root that:
-  - pre-caches the app shell (HTML, CSS, JS, icons)
-  - serves the shell from cache when offline
-  - caches fonts the first time they load (see risk below)
-  - updates in the background and shows an "Update available, tap to refresh" toast
-- Remove the dead `via.placeholder.com` avatar URL, which would fail offline (and ui.js already replaces it with a letter).
-- A small offline indicator in the UI is optional; we'll decide when we get there.
+- **Vercel:** `vercel.json` sets cache rules for `sw.js`, the manifest's content type, and two small security headers. `/docs` redirects to the home page so the roadmap isn't on the public site.
+- **Installable app:** `manifest.webmanifest`, iOS meta tags, and new icons redrawn as vectors (`assets/icons/`): full-bleed for iOS, rounded for Android, and a maskable one.
+- **Offline:** `sw.js` saves the app files and the fonts, and `js/pwa.js` registers it.
+- **iPhone screen fit:** `viewport-fit=cover`, an orange strip behind the status bar, and safe-area padding on the header, bottom nav, mini player, full-screen player, drawer, queue, toast and dialogs, all in `css/ios.css`. Heights use `100dvh`.
+- **iPhone only:** every rule in `ios.css` sits behind an iOS-WebKit check plus a phone-size check (see the top of that file). Desktop, iPad and Android are untouched.
+- **Cleanups:** removed the dead `via.placeholder.com` URL, removed the pinch-zoom lock (and made form fields 16px on iPhone so Safari doesn't zoom when you tap them), and updated the README (Vercel steps replace GitHub Pages).
 
-### 1d. iPhone safe areas, top and bottom
-- `viewport-fit=cover` so the app draws under the status bar/notch/Dynamic Island and the home indicator.
-- Apply `env(safe-area-inset-*)` padding to: the header (top), the bottom nav, the mini player, the full-screen player and its control bar, the queue panel, the toast, and the slide-out drawer.
-- Replace `100vh` with `100dvh` so heights are right when Safari's toolbar shows and hides.
-- **iPhone only:** the rules are wrapped so they apply only to iOS WebKit at phone width (`@supports (-webkit-touch-callout: none)` combined with the existing 768 px mobile breakpoint). Desktop and Android layouts are not changed.
-- Landscape: left/right insets handled so controls don't sit under the notch.
+### Where this differs from the original plan
 
-### 1e. Small fixes found while reading the code
-- README mentions a `.nojekyll` file that isn't in the project. It isn't needed for Vercel; update the README to match.
-- Decide whether to keep `user-scalable=no` in the viewport tag. It gives an app-like feel but blocks pinch-zoom, which is an accessibility problem.
+| Plan said | What I did | Why |
+| --- | --- | --- |
+| "Update available, tap to refresh" toast | The service worker is **network first**: online means newest files every time, offline means the saved copy | There is no stale-version problem to manage, and no toast needed |
+| Keep `docs/` off the site with `.vercelignore` | A redirect in `vercel.json` | `.vercelignore` isn't reliably applied to deploys that come from GitHub |
+| Fonts may need self-hosting | Fonts are saved automatically on first online visit | I can't download files here. Self-hosting stays an option in Phase 5 if the on-device test shows a problem |
 
-### Done when
-- Live on a Vercel URL.
-- On a real iPhone: Add to Home Screen works, the app opens full-screen, the header clears the status bar, and the bottom nav and mini player clear the home indicator.
-- Turn on airplane mode, fully close and reopen the app: it still loads and navigates.
-- Rotating to landscape doesn't put controls under the notch.
-- Desktop browser layout looks identical to before.
-- Lighthouse PWA/installability check passes.
+### Checked here (desktop browser imitating an iPhone)
 
-### Risks
-- **Fonts offline.** Roboto and Material Icons currently load from Google Fonts. Phase 1 caches them the first time they load, so offline works after one online visit. For first-ever-load-offline reliability the font files should be self-hosted. My working environment can't download files, so this needs the font files to be added to the project (I'll give exact steps) and is the one item that may slip to Phase 5.
-- **Forgetting to bump the cache version** leaves users on old files. The update toast and a clear version constant in `sw.js` reduce this.
-- **iOS behaviour differs from desktop.** Everything in this phase needs checking on a real iPhone, not just a desktop browser's phone emulator.
+- [x] Desktop, tablet and Android-style phone layouts are **pixel-identical** to before.
+- [x] iPhone portrait with a 47px notch and 34px home bar: header, bottom nav, mini player, drawer, full-screen player and queue all land where they should, with no gaps or overlaps (measured, 20 checks).
+- [x] iPhone landscape with 47px side notches: content, header and player are clear of the notch.
+- [x] Offline: with the network off, `/`, `/index.html` and `/?query` all open, every screen builds, there are no JS errors.
+- [x] A changed file shows up on the next online load, and that newer copy is what opens offline afterwards.
+- [x] Changing `VERSION` in `sw.js` removes the old saved copies.
+- [x] A blocked or unreachable Google Fonts does not break install.
+- [x] The font-saving logic works against sample Google CSS (not against the real Google servers, which I can't reach from here).
 
----
+### Still to check (needs you)
+
+- [ ] Live on a Vercel URL.
+- [ ] Real iPhone: Add to Home Screen works, opens full-screen, clock readable, nothing hidden by the notch or home bar.
+- [ ] Airplane mode, fully close and reopen: it still opens **with icons showing as pictures**.
+- [ ] Rotating to landscape looks right.
+- [ ] `/docs/roadmap.md` on the live site redirects to the home page.
+
+### Known limits
+
+- **Landscape on a phone** uses the desktop layout, which is cramped on a 390px-tall screen. It is safe (nothing under the notch) but not pretty. Fixing it means making the mobile layout also apply to landscape phones; I've left it out of Phase 1 and can add it in Phase 5.
+- **Your first visit must be online.** Offline use starts after one online open.
+- **Real iPhone only.** I couldn't run Safari itself here, so iOS-specific behaviour (status bar colour, the exact insets) is checked by measurement, not by eye on a device.
 
 ## Phase 2: Real playback engine
 
@@ -146,7 +142,8 @@ Status key: ⬜ not started · 🟨 in progress · ✅ done
 
 ## Phase 5: Reliability and polish
 
-- Self-host fonts if not already done.
+- Self-host fonts if the on-device offline test showed a problem.
+- Use the mobile layout for phones in landscape too.
 - Backup and restore: export the library info to a file and import it back.
 - Handle audio interruptions (phone calls, other apps), and resume sensibly.
 - Error states: unsupported file, storage full, corrupted file.

@@ -1,0 +1,148 @@
+/* ==========================================================================
+   ios.css — iPhone-only layout fixes (safe areas, dynamic viewport height)
+
+   Loaded AFTER styles.css and components.css. Nothing here applies to
+   desktop browsers, iPad or Android, because every rule sits inside two guards:
+
+     1. @supports (-webkit-touch-callout: none)
+        True only in iOS WebKit (Safari and every other browser on iPhone/iPad).
+
+     2. @media (max-width: 480px), (max-height: 480px)
+        Phone-sized screens in portrait (narrow) or landscape (short).
+        An iPad's shortest side is 744px+, so it never matches.
+
+   Inside, two more media queries mirror the app's own layout switch:
+     - max-width: 768px  = the mobile layout (bottom nav, mini player, drawer)
+     - min-width: 769px  = the desktop layout, which a phone gets in landscape
+
+   The safe-area values are 0 unless the page is drawn under the status bar /
+   notch / home indicator (Home Screen app, or Safari with viewport-fit=cover),
+   so these rules do nothing harmful in a normal Safari tab.
+   ========================================================================== */
+
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 480px), (max-height: 480px) {
+
+    :root {
+      --sat: env(safe-area-inset-top, 0px);
+      --sar: env(safe-area-inset-right, 0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+      --sal: env(safe-area-inset-left, 0px);
+    }
+
+    /* ---- App feel ---------------------------------------------------- */
+    html {
+      -webkit-text-size-adjust: 100%;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;       /* no double-tap zoom delay; pinch still works */
+      overscroll-behavior: none;
+    }
+    .main-content, .sidebar, .queue .list, .pop { overscroll-behavior: contain; }
+
+    /* iOS zooms the page when you focus an input smaller than 16px */
+    select, .field, textarea, .search-bar input { font-size: 16px; }
+
+    /* ---- Status bar area (top) ---------------------------------------
+       The page draws under the status bar. Paint that strip orange so the
+       white status-bar text is readable, even over white panels like the
+       drawer and the full-screen player. */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--sat);
+      background: var(--primary-orange);
+      z-index: 9999;
+      pointer-events: none;
+    }
+    header { top: var(--sat); }
+
+
+    /* ======================================================================
+       DESKTOP LAYOUT on a phone (landscape, wider than 768px)
+       Here the safe areas are mostly left/right (notch) and bottom.
+       ====================================================================== */
+    @media (min-width: 769px) {
+      .header-left  { width: calc(240px + var(--sal)); padding-left: calc(16px + var(--sal)); }
+      .header-right { padding-right: calc(24px + var(--sar)); }
+
+      .app-container {
+        margin-top: calc(64px + var(--sat));
+        height: calc(100vh - 64px - var(--sat) - 90px - var(--sab));
+        height: calc(100dvh - 64px - var(--sat) - 90px - var(--sab));
+      }
+      .sidebar      { width: calc(240px + var(--sal)); padding-left: var(--sal); }
+      .main-content { padding-right: calc(40px + var(--sar)); }
+
+      .player {
+        height: calc(90px + var(--sab));
+        padding: 0 calc(24px + var(--sar)) var(--sab) var(--sal);
+      }
+      .queue { bottom: calc(90px + var(--sab)); right: var(--sar); }
+      .toast { bottom: calc(110px + var(--sab)); }
+    }
+
+
+    /* ======================================================================
+       MOBILE LAYOUT (768px and under): portrait phones, small landscape
+       ====================================================================== */
+    @media (max-width: 768px) {
+      .header-left  { padding-left: calc(16px + var(--sal)); }
+      .header-right { padding-right: calc(24px + var(--sar)); }
+
+      /* header 64 + mini player 70 + bottom nav 56, plus the safe areas */
+      .app-container {
+        margin-top: calc(64px + var(--sat));
+        height: calc(100vh - 64px - var(--sat) - 70px - 56px - var(--sab));
+        height: calc(100dvh - 64px - var(--sat) - 70px - 56px - var(--sab));
+      }
+      .main-content {
+        padding-left: calc(16px + var(--sal));
+        padding-right: calc(16px + var(--sar));
+      }
+
+      /* Bottom nav grows to include the home-indicator area */
+      .mobile-bottom-nav {
+        height: calc(56px + var(--sab));
+        padding: 0 var(--sar) var(--sab) var(--sal);
+      }
+      /* Mini player sits on top of the (taller) bottom nav */
+      .player {
+        bottom: calc(56px + var(--sab));
+        padding-left: var(--sal);
+        padding-right: calc(16px + var(--sar));
+      }
+
+      /* Slide-out drawer */
+      .sidebar {
+        padding-left: var(--sal);
+        padding-bottom: calc(20px + var(--sab));
+      }
+      .sidebar-drawer-header {
+        height: calc(64px + var(--sat));
+        padding-top: var(--sat);
+      }
+
+      /* Full-screen player */
+      .fullscreen-player { padding-bottom: calc(64px + var(--sab)); }
+      .fs-header {
+        height: calc(70px + var(--sat));
+        padding: var(--sat) calc(16px + var(--sar)) 0 calc(16px + var(--sal));
+      }
+      .fs-bottom-bar {
+        height: calc(64px + var(--sab));
+        padding: 0 var(--sar) var(--sab) var(--sal);
+      }
+
+      /* Queue panel (full-screen on mobile) and toast */
+      .queue { top: calc(64px + var(--sat)); padding-bottom: var(--sab); }
+      .toast { bottom: calc(150px + var(--sab)); }
+    }
+
+
+    /* ---- Dialogs (both layouts) --------------------------------------- */
+    .scrim {
+      padding: calc(16px + var(--sat)) calc(16px + var(--sar)) calc(16px + var(--sab)) calc(16px + var(--sal));
+    }
+  }
+}
