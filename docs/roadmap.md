@@ -57,6 +57,12 @@ Status key: ⬜ not started · 🟨 in progress · ✅ done
 - **iPhone only:** every rule in `ios.css` sits behind an iOS-WebKit check plus a phone-size check (see the top of that file). Desktop, iPad and Android are untouched.
 - **Cleanups:** removed the dead `via.placeholder.com` URL, removed the pinch-zoom lock (and made form fields 16px on iPhone so Safari doesn't zoom when you tap them), and updated the README (Vercel steps replace GitHub Pages).
 
+### Fix round 1: bottom strip on iOS 26 (found on a real iPhone)
+
+The first real-device test showed the bottom nav stopping about 44pt short of the screen edge, with grey underneath. That is an open WebKit bug (iOS 26 shortens an installed app's page area by the status-bar height), not a mistake in the layout. I added three defences (see `how-it-works.md`): a full-screen `min-height` on `<html>` that has worked in the iOS 26.2 simulator, a measurement of any leftover strip so the bottom bar doesn't pad twice, and a white page background so a leftover strip looks like part of the bar. There is also a hidden diagnostic panel for reading the real numbers off a device.
+
+Whether the full-height workaround takes effect depends on the iOS version, and I can't test on a device. The worst case is a white strip that looks like part of the bottom bar.
+
 ### Where this differs from the original plan
 
 | Plan said | What I did | Why |
@@ -79,6 +85,7 @@ Status key: ⬜ not started · 🟨 in progress · ✅ done
 ### Still to check (needs you)
 
 - [ ] Live on a Vercel URL.
+- [ ] Real iPhone, **after fix round 1**: bottom bar reaches the bottom edge, or any strip under it is plain white and looks like part of the bar.
 - [ ] Real iPhone: Add to Home Screen works, opens full-screen, clock readable, nothing hidden by the notch or home bar.
 - [ ] Airplane mode, fully close and reopen: it still opens **with icons showing as pictures**.
 - [ ] Rotating to landscape looks right.
@@ -88,6 +95,7 @@ Status key: ⬜ not started · 🟨 in progress · ✅ done
 
 - **Landscape on a phone** uses the desktop layout, which is cramped on a 390px-tall screen. It is safe (nothing under the notch) but not pretty. Fixing it means making the mobile layout also apply to landscape phones; I've left it out of Phase 1 and can add it in Phase 5.
 - **Your first visit must be online.** Offline use starts after one online open.
+- **iOS 26 bottom strip.** An open WebKit bug can leave a strip at the bottom of an installed app that no page element can reach. We work around it as far as is possible; a guaranteed fix would need a solid (non-see-through) status bar, which gives up the orange strip at the top. That is an option if the workaround isn't enough.
 - **Real iPhone only.** I couldn't run Safari itself here, so iOS-specific behaviour (status bar colour, the exact insets) is checked by measurement, not by eye on a device.
 
 ## Phase 2: Real playback engine

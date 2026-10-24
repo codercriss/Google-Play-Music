@@ -27,10 +27,10 @@ Opening `index.html` directly also works, but offline support only runs on `http
 | `index.html` | ~21 KB | The page head (install and iPhone tags) and all the base markup: header, sidebar, **Listen Now** and **My Library** screens, desktop player bar, mobile full-screen player, mobile bottom nav |
 | `css/styles.css` | ~29 KB | Variables, layout, header, sidebar, cards, song rows, player bar, and all mobile rules (two breakpoints: 992 px and 768 px) |
 | `css/components.css` | ~11 KB | Popup menus, library tabs, settings/help/upload panels, modal, queue panel, toast |
-| `css/ios.css` | ~6 KB | iPhone-only fixes: safe areas, status-bar strip, screen height (see iPhone layout) |
+| `css/ios.css` | ~7 KB | iPhone-only fixes: safe areas, status-bar strip, screen height (see iPhone layout) |
 | `js/app.js` | ~6 KB | Screen switching, mobile drawer, mobile full-screen player (open, swipe-down close, play/pause icon swap) |
 | `js/ui.js` | ~24 KB | Everything else: builds extra screens, all dropdown menus, library tabs, modal, queue, toast |
-| `js/pwa.js` | <1 KB | Registers the service worker |
+| `js/pwa.js` | ~5 KB | Registers the service worker, measures the iOS 26 bottom strip, hidden diagnostic panel |
 | `sw.js` | ~7 KB | Service worker: saves the app for offline use (see Offline and install) |
 | `manifest.webmanifest` | <1 KB | Install info: name, colours, icons |
 | `vercel.json` | <1 KB | Vercel cache headers and the `/docs` redirect |
@@ -115,6 +115,10 @@ The page is told to draw edge to edge (`viewport-fit=cover` in the viewport tag)
 - **Status-bar strip.** A fixed orange bar (`body::before`) fills the area behind the clock so its white text is readable, including over white panels like the drawer. It sits above everything else.
 - **iPhone only.** Every rule is wrapped in two checks: `@supports (-webkit-touch-callout: none)` (true only in iOS WebKit) and a phone-size media query (`max-width: 480px` or `max-height: 480px`, which an iPad never matches). Inside those, the file mirrors the app's own two layouts: `max-width: 768px` for the mobile layout, and `min-width: 769px` for the desktop layout that a phone gets in landscape.
 - **Screen height.** Heights use `100dvh` (the visible height, which follows Safari's toolbar) with `100vh` as a fallback for older iOS.
+- **The iOS 26 bottom-strip bug.** In an installed iPhone app with a see-through status bar, iOS 26 can make the page area shorter than the screen by the status-bar height. Nothing can be drawn in the strip left at the bottom, and the system colours it using the page's background colour (it was grey in the first screenshot). This is an open, unfixed WebKit bug (tracked as 301994, still reported on iOS 26.5.2 and the iOS 27 beta). We defend in three layers:
+  1. In the installed app only, `<html>` gets a minimum height of the full screen (`min(100lvh, 100% + top inset)`). iOS only shortens the viewport while the page is shorter than the screen, and this has restored full height in the iOS 26.2 simulator. One report from a real device says nothing recovered the strip, so this may not work for everyone.
+  2. `js/pwa.js` measures what is left (`screen height - visible height`) into `--ios-gap`, only on iPhones in the installed app, and ignores it while you're typing. `ios.css` subtracts it from the home-bar padding, so the bottom bar doesn't add padding on top of the strip.
+  3. `<html>` is painted white, the same as the bottom bar, so any strip that remains looks like part of the bar rather than a grey gap. (The system only re-reads this colour when the app is relaunched.)
 - **Small iOS fixes.** No double-tap zoom delay, no tap highlight, no rubber-band scrolling that drags the whole page, and form fields are 16px so Safari doesn't zoom in when you tap one.
 
 Adding anything new that is fixed to the top or bottom of the screen means giving it the same treatment in this file.
@@ -137,6 +141,8 @@ Adding anything new that is fixed to the top or bottom of the screen means givin
 - The page can be reached as `/`, `/index.html` or `/?something`; all are served from one saved copy.
 - Because files are fetched fresh whenever you're online, you only change `VERSION` in `sw.js` when you **add or remove files** from `SHELL_FILES`. Changing it deletes the old saved copies.
 - `vercel.json` makes sure browsers never reuse an old `sw.js`, which would otherwise stop updates arriving.
+
+**Hidden diagnostic panel.** Open the menu and tap the "Google Play music" title 5 times quickly. A panel shows the screen size, visible size, safe areas, `dvh/svh/lvh`, the measured strip and where the bottom bar sits. Tap it to close. It exists so layout problems on a real iPhone can be diagnosed from one screenshot. Adding `?debug` to the address opens it on load (handy on a computer).
 
 **What offline can't do:** the very first visit has to be online. Songs will be a different story: from Phase 3 they live on the device itself.
 

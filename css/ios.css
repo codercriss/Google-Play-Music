@@ -15,6 +15,14 @@
      - max-width: 768px  = the mobile layout (bottom nav, mini player, drawer)
      - min-width: 769px  = the desktop layout, which a phone gets in landscape
 
+   KNOWN iOS 26 BUG (WebKit 301994 / 301108): in a Home Screen app with a
+   see-through status bar, iOS can make the page area shorter than the screen
+   by the status-bar height, leaving a strip at the bottom that no element can
+   reach. Two defences below: (1) a min-height on <html> that has made iOS give
+   back the full height in tests, and (2) js/pwa.js measures any leftover strip
+   into --ios-gap, and the layout then stops adding its own bottom padding on
+   top of it, while the strip itself is painted white to match the bottom bar.
+
    The safe-area values are 0 unless the page is drawn under the status bar /
    notch / home indicator (Home Screen app, or Safari with viewport-fit=cover),
    so these rules do nothing harmful in a normal Safari tab.
@@ -26,8 +34,29 @@
     :root {
       --sat: env(safe-area-inset-top, 0px);
       --sar: env(safe-area-inset-right, 0px);
-      --sab: env(safe-area-inset-bottom, 0px);
       --sal: env(safe-area-inset-left, 0px);
+
+      /* Height of the unreachable strip at the bottom (iOS 26 bug). Set by
+         js/pwa.js; 0 when there is no strip. The home-bar padding we add
+         is whatever the strip doesn't already cover. */
+      --ios-gap: 0px;
+      --sab: max(0px, calc(env(safe-area-inset-bottom, 0px) - var(--ios-gap)));
+    }
+
+    /* The system paints the strip using the page's background colour. Use the
+       same white as the bottom nav, so it looks like part of the bar. (The grey
+       app background is still painted by <body>.) */
+    html { background-color: #ffffff; }
+
+    /* Defence 1: a page at least as tall as the screen makes iOS give the app
+       its full-height viewport. Only in the installed app; harmless elsewhere
+       because <body> has overflow hidden. The first line is a fallback for iOS
+       versions without the lvh unit. */
+    @media (display-mode: standalone) {
+      html {
+        min-height: calc(100% + var(--sat));
+        min-height: min(100lvh, calc(100% + var(--sat)));
+      }
     }
 
     /* ---- App feel ---------------------------------------------------- */

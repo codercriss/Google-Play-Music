@@ -55,7 +55,7 @@ css/components.css      dropdowns, tabs, extra pages, modal, queue panel
 css/ios.css             iPhone-only fixes: safe areas, screen height
 js/app.js               view switching, sidebar drawer, full-screen player
 js/ui.js                dropdowns, extra pages, library tabs, modal, queue
-js/pwa.js               registers the service worker
+js/pwa.js               registers the service worker, iPhone layout helpers, hidden diagnostics
 assets/                 app icon and logo
 assets/icons/           home-screen and install icons (+ SVG sources)
 docs/                   roadmap, how it works, iPhone test checklist

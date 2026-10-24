@@ -19,13 +19,19 @@ You need: the live Vercel link, and an iPhone with Safari.
 ## C. Fit to the screen (Home Screen app, portrait)
 
 - [ ] The orange header sits **below** the clock and battery, and the clock text is readable (white on orange).
-- [ ] The bottom navigation (Listen Now / Library / Mixes / Shop) is fully above the home bar, with the line at the very bottom of the screen not touching the icons.
+- [ ] The white bottom navigation (Listen Now / Library / Mixes / Shop) runs all the way to the bottom of the screen, with the labels clear of the home bar. **If you see a grey band under it, that is the iOS 26 bug: see "If something is still wrong at the bottom" below.** A white band under it is acceptable (it is the best fallback).
 - [ ] The mini player sits directly above the bottom navigation with no gap.
 - [ ] Tap the mini player: the full-screen player opens. Its top row is below the clock, and its controls at the bottom are above the home bar.
 - [ ] Swipe down on the full-screen player: it closes.
 - [ ] Open the menu (three lines, top left): the drawer's top is below the clock, and its last item is reachable at the bottom.
 - [ ] Open the queue: its top is below the header and its list scrolls to the end.
 - [ ] Create a playlist (the plus next to Playlists): the dialog is fully on screen.
+
+### If something is still wrong at the bottom
+
+1. Fully close the app (swipe it away) and reopen it. iOS only re-reads the colour under the bottom bar when the app starts.
+2. Open the menu and tap the **"Google Play music"** title **5 times quickly**. A dark panel with green text appears.
+3. Take a screenshot with the panel showing, and tell me your iOS version (Settings, General, About, "iOS Version"). Tap the panel to close it.
 
 ## D. Offline
 
