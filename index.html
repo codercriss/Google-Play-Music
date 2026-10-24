@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="icon" type="image/png" href="assets/icon.png">
+    <title>Google Play Music UI Clone</title>
+    <meta name="description" content="Responsive front-end recreation of the Google Play Music web UI in plain HTML, CSS and JavaScript. Unofficial fan project, not affiliated with Google.">
+    <meta name="theme-color" content="#ef6c00">
+    <meta property="og:title" content="Google Play Music UI Clone">
+    <meta property="og:description" content="Responsive Google Play Music web UI recreation in vanilla HTML, CSS and JS. UI demo only.">
+    <meta property="og:image" content="assets/icon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+<!-- Unofficial fan project. Not affiliated with or endorsed by Google. UI demo only. -->
+<body>
+
+    <header>
+        <div class="header-left">
+            <i class="material-icons" id="menu-toggle" onclick="toggleSidebar()">menu</i>
+            <div class="logo">Google <span>Play</span>&nbsp;music</div>
+        </div>
+        <div class="header-right">
+            <div class="header-title" id="header-title">Listen Now</div>
+            <div class="search-bar">
+                <i class="material-icons">search</i>
+                <input type="text" placeholder="Search music">
+            </div>
+            <div class="header-actions">
+                <i class="material-icons">apps</i>
+                <i class="material-icons">notifications</i>
+                <div class="profile-pic" style="background-image: url('https://via.placeholder.com/32');"></div>
+            </div>
+        </div>
+    </header>
+
+    <div class="app-container">
+        
+        <aside class="sidebar">
+            <div class="sidebar-drawer-header">
+                <i class="material-icons" onclick="closeSidebar()">close</i>
+                <div class="logo">
+                    <img src="assets/logo.png" alt="" style="width:24px; height:24px; margin-right:8px;">
+                    Google <span>Play</span>&nbsp;music
+                </div>
+            </div>
+            <ul class="sidebar-menu sidebar-menu-primary">
+                <li class="sidebar-item active" data-view="listen-now">
+                    <i class="material-icons">headphones</i> Listen Now
+                </li>
+                <li class="sidebar-item" data-view="library">
+                    <i class="material-icons">library_music</i> My Library
+                </li>
+                <li class="sidebar-item">
+                    <i class="material-icons">album</i> Instant Mixes
+                </li>
+                <li class="sidebar-item">
+                    <i class="material-icons">shopping_bag</i> Shop
+                </li>
+            </ul>
+
+            <ul class="sidebar-menu">
+                <li class="sidebar-item no-icon" data-view="library">Auto Playlists</li>
+                <li class="sidebar-item no-icon" data-view="library">Thumbs up</li>
+                <li class="sidebar-item no-icon" data-view="library">Last added</li>
+                <li class="sidebar-item no-icon" data-view="library">Free and purchased</li>
+            </ul>
+
+            <ul class="sidebar-menu">
+                <div class="sidebar-header">
+                    <span>Playlists</span>
+                    <i class="material-icons">add</i>
+                </div>
+                <li class="sidebar-subitem" data-view="library">Pretty Music</li>
+                <li class="sidebar-subitem" data-view="library">Raine</li>
+                <li class="sidebar-subitem" data-view="library">sync</li>
+            </ul>
+
+            <ul class="sidebar-menu" style="margin-top: 20px;">
+                <li class="sidebar-item">
+                    <i class="material-icons">add_circle_outline</i> Add music
+                </li>
+                <li class="sidebar-item">
+                    <i class="material-icons">settings</i> Settings
+                </li>
+                <li class="sidebar-item">
+                    <i class="material-icons">delete</i> Trash
+                </li>
+                <li class="sidebar-item">
+                    <i class="material-icons">help_outline</i> Help & Feedback
+                </li>
+            </ul>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+        <main class="main-content">
+
+            <div class="content-view" id="view-listen-now">
+            
+            <div class="section-header">
+                <div class="section-title">
+                    <h2>Recent activity</h2>
+                    <p>Recently played or added</p>
+                </div>
+                <button class="btn-see-all">See All</button>
+            </div>
+
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-image">
+                        <div style="padding:10px; color:white; font-family:serif; font-style:italic; font-size:24px; text-align:center; height:100%; display:flex; flex-direction:column; justify-content:center;">Big Gigantic<br><span style="font-size:16px">The Night is Young</span></div>
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title">Thissongissick.com</div>
+                        <div class="card-subtitle">Various</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-image">
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title">LP1</div>
+                        <div class="card-subtitle">FKA Twigs</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-image">
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title">shh#ffb6c1</div>
+                        <div class="card-subtitle">Swick & Lewis Cancut</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-image" style="background:#546e7a;">
+                        <div style="color:white; text-align:center; padding-top:40px;">LUZCID<br>RUXELL<br><br>U.F.O</div>
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title">EDM.com Exclusive</div>
+                        <div class="card-subtitle">LUZCID x Ruxell</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-image" style="background:#e0e0e0; display:flex; align-items:center; justify-content:center;">
+                        <i class="material-icons" style="font-size:64px; color:#bdbdbd;">headphones</i>
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title">Unknown Album</div>
+                        <div class="card-subtitle">remixxxxes</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-image" style="background:#e0e0e0; display:flex; align-items:center; justify-content:center;">
+                        <i class="material-icons" style="font-size:64px; color:#bdbdbd;">headphones</i>
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title">Unknown Album</div>
+                        <div class="card-subtitle">ILLENIUM (Official)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-header">
+                <div class="section-title">
+                    <h2>Recommended for you</h2>
+                </div>
+            </div>
+
+            <div class="recommended-grid">
+                <div class="lucky-mix-card">
+                    <div class="lucky-icon">
+                        <i class="material-icons">casino</i>
+                    </div>
+                    <div class="lucky-info">
+                        <div class="lucky-title">I'm feeling lucky mix</div>
+                        <div class="lucky-subtitle">Based on your music taste</div>
+                    </div>
+                </div>
+
+                <div class="lucky-mix-spacer" style="grid-column: span 2;"></div>
+
+                <div class="large-card" style="background-color: #f5e6d3;">
+                     <div style="text-align:center; padding-top:60px; color:#c62828; font-weight:bold; font-size:24px;">MY FRIENDS<br>NEVER<br>-DIE-</div>
+                     <div class="large-card-overlay" style="background: white; color: black; border-top: 1px solid #eee;">
+                        <div class="large-card-title">Aluna George - You Know You Like It (Dj Snake R...</div>
+                        <div class="large-card-subtitle" style="color:#777;">Instant mix</div>
+                    </div>
+                </div>
+
+                <div class="large-card" style="background-color: #9e9e9e;">
+                    <div style="display:flex; justify-content:center; align-items:center; height:100%;">
+                        <i class="material-icons" style="font-size:100px; color:#e0e0e0;">headphones</i>
+                    </div>
+                    <div class="play-overlay-icon">
+                        <i class="material-icons">play_arrow</i>
+                    </div>
+                    <div class="large-card-overlay">
+                        <div class="large-card-title">Aluna George - You Know You Like It (Dj Snake R...</div>
+                        <div class="large-card-subtitle">Instant mix</div>
+                    </div>
+                </div>
+
+                <div class="large-card" style="background-color: #212121; color:white;">
+                    <div style="text-align:center; padding-top:60px; font-size:40px; font-weight:bold; color:#d81b60;">STAY HIGH</div>
+                    <div class="play-overlay-icon">
+                        <i class="material-icons">play_arrow</i>
+                    </div>
+                    <div class="large-card-overlay">
+                        <div class="large-card-title">Hippie Sabotage (Tove Lo Flip)</div>
+                        <div class="large-card-subtitle">Instant mix</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="height: 40px;"></div>
+
+            </div>
+
+            <div class="content-view" id="view-library" style="display:none;">
+
+                <div class="song-list-header">
+                    <div class="song-col-title">SONG</div>
+                    <div class="song-col-time"><i class="material-icons">schedule</i></div>
+                    <div class="song-col-plays"><i class="material-icons">music_note</i></div>
+                </div>
+
+                <div class="song-row">
+                    <div class="song-row-art"><span style="color:#e53935; font-family:cursive; font-size:9px; font-weight:bold;">daft<br>punk</span></div>
+                    <div class="song-row-info">
+                        <div class="song-row-title">DAFTENDIREKT</div>
+                        <div class="song-row-artist">DAFT PUNK - HOMEWORK</div>
+                    </div>
+                    <div class="song-row-time">2:45</div>
+                    <div class="song-row-plays">15</div>
+                </div>
+                <div class="song-row">
+                    <div class="song-row-art"><span style="color:#fff; font-family:cursive; font-size:9px; font-weight:bold;">daft<br>punk</span></div>
+                    <div class="song-row-info">
+                        <div class="song-row-title">AERODYNAMIC</div>
+                        <div class="song-row-artist">DAFT PUNK - DISCOVERY</div>
+                    </div>
+                    <div class="song-row-time">3:28</div>
+                    <div class="song-row-plays">17</div>
+                </div>
+                <div class="song-row">
+                    <div class="song-row-art"><span style="color:#fff; font-family:cursive; font-size:9px; font-weight:bold;">daft<br>punk</span></div>
+                    <div class="song-row-info">
+                        <div class="song-row-title">DIGITAL LOVE</div>
+                        <div class="song-row-artist">DAFT PUNK - DISCOVERY</div>
+                    </div>
+                    <div class="song-row-time">4:58</div>
+                    <div class="song-row-plays">26</div>
+                </div>
+                <div class="song-row">
+                    <div class="song-row-art"><span style="color:#fff; font-family:cursive; font-size:9px; font-weight:bold;">daft<br>punk</span></div>
+                    <div class="song-row-info">
+                        <div class="song-row-title">HARDER, BETTER, FASTER, STR...</div>
+                        <div class="song-row-artist">DAFT PUNK - DISCOVERY</div>
+                    </div>
+                    <div class="song-row-time">3:44</div>
+                    <div class="song-row-plays">26</div>
+                </div>
+                <div class="song-row">
+                    <div class="song-row-art" style="background:#e0e0e0;"><i class="material-icons" style="color:#9e9e9e; font-size:20px;">bar_chart</i></div>
+                    <div class="song-row-info">
+                        <div class="song-row-title">CRESCENDOLLS</div>
+                        <div class="song-row-artist">DAFT PUNK - DISCOVERY</div>
+                    </div>
+                    <div class="song-row-time">3:32</div>
+                    <div class="song-row-plays">18</div>
+                </div>
+                <div class="song-row">
+                    <div class="song-row-art"><span style="color:#fff; font-family:cursive; font-size:9px; font-weight:bold;">daft<br>punk</span></div>
+                    <div class="song-row-info">
+                        <div class="song-row-title">NIGHTVISION</div>
+                        <div class="song-row-artist">DAFT PUNK - DISCOVERY</div>
+                    </div>
+                    <div class="song-row-time">1:45</div>
+                    <div class="song-row-plays">17</div>
+                </div>
+                <div class="song-row">
+                    <div class="song-row-art"><span style="color:#fff; font-family:cursive; font-size:9px; font-weight:bold;">daft<br>punk</span></div>
+                    <div class="song-row-info">
+                        <div class="song-row-title">SOMETHING ABOUT US</div>
+                        <div class="song-row-artist">DAFT PUNK - DISCOVERY</div>
+                    </div>
+                    <div class="song-row-time">3:51</div>
+                    <div class="song-row-plays">14</div>
+                </div>
+                <div class="song-row">
+                    <div class="song-row-art"><span style="color:#fff; font-family:cursive; font-size:9px; font-weight:bold;">daft<br>punk</span></div>
+                    <div class="song-row-info">
+                        <div class="song-row-title">VOYAGER</div>
+                        <div class="song-row-artist">DAFT PUNK - DISCOVERY</div>
+                    </div>
+                    <div class="song-row-time">3:48</div>
+                    <div class="song-row-plays">16</div>
+                </div>
+                <div class="song-row">
+                    <div class="song-row-art" style="background:#e0e0e0;"><i class="material-icons" style="color:#9e9e9e; font-size:20px;">bar_chart</i></div>
+                    <div class="song-row-info">
+                        <div class="song-row-title">VERDIS QUO</div>
+                        <div class="song-row-artist">DAFT PUNK - DISCOVERY</div>
+                    </div>
+                    <div class="song-row-time">3:45</div>
+                    <div class="song-row-plays">13</div>
+                </div>
+
+                <div style="height: 40px;"></div>
+
+            </div>
+
+        </main>
+    </div>
+
+    <footer class="player" id="mini-player">
+        <div class="progress-bar">
+            <div class="progress-current"></div>
+        </div>
+        
+        <div class="player-left">
+            <div class="now-playing-img">
+                <span style="font-size:20px; font-style:italic;">daft<br>punk</span>
+            </div>
+            <div class="now-playing-info">
+                <div class="track-title">HARDER, BETTER</div>
+                <div class="track-artist">DAFT PUNK - DISCOVERY</div>
+            </div>
+        </div>
+
+        <div class="player-center">
+            <i class="material-icons small-icon">more_vert</i>
+            <i class="material-icons small-icon">thumb_up_off_alt</i>
+            <i class="material-icons small-icon">thumb_down_off_alt</i>
+            <i class="material-icons">shuffle</i>
+            <i class="material-icons">skip_previous</i>
+            
+            <div class="play-btn" id="mini-play-btn">
+                <i class="material-icons">pause</i>
+            </div>
+            
+            <i class="material-icons mobile-next" style="display:none;">skip_next</i>
+            <i class="material-icons">skip_next</i>
+            <i class="material-icons">repeat</i>
+        </div>
+
+        <div class="player-right">
+            <i class="material-icons">volume_up</i>
+            <i class="material-icons">cast</i>
+            <i class="material-icons">queue_music</i>
+        </div>
+    </footer>
+
+    <!-- FULL-SCREEN PLAYER (mobile only) -->
+    <div class="fullscreen-player" id="fullscreen-player">
+        <div class="fs-header">
+            <div class="fs-header-left" id="fs-close">
+                <div class="now-playing-img">
+                    <span style="font-size:20px; font-style:italic;">daft<br>punk</span>
+                </div>
+                <div class="now-playing-info">
+                    <div class="track-title">HARDER, BETTER</div>
+                    <div class="track-artist">DAFT PUNK - DISCOVERY</div>
+                </div>
+            </div>
+            <div class="fs-header-right">
+                <i class="material-icons">more_vert</i>
+                <i class="material-icons">queue_music</i>
+            </div>
+        </div>
+
+        <div class="fs-artwork">
+            <div class="fs-artwork-img">
+                <span>daft<br>punk</span>
+            </div>
+            <div class="fs-overlay">
+                <div class="fs-overlay-title">HARDER, BETTER, FASTER, STRONGER</div>
+                <div class="fs-overlay-artist">Daft Punk &nbsp;&middot;&nbsp; Discovery</div>
+                <div class="fs-overlay-icons">
+                    <i class="material-icons">thumb_up_off_alt</i>
+                    <i class="material-icons">thumb_down_off_alt</i>
+                    <div class="fs-overlay-spacer"></div>
+                    <i class="material-icons">volume_up</i>
+                    <i class="material-icons">cast</i>
+                </div>
+                <div class="fs-overlay-progress-bar">
+                    <div class="fs-overlay-progress-current"></div>
+                </div>
+                <div class="fs-overlay-time-row">
+                    <span>1:12</span>
+                    <span>3:45</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIXED BOTTOM CONTROL BAR (full-screen player, mobile only) -->
+    <div class="fs-bottom-bar" id="fs-bottom-bar">
+        <i class="material-icons">shuffle</i>
+        <i class="material-icons">skip_previous</i>
+        <div class="fs-bar-play-btn" id="fs-play-btn">
+            <i class="material-icons">pause</i>
+        </div>
+        <i class="material-icons">skip_next</i>
+        <i class="material-icons">repeat</i>
+    </div>
+
+    <nav class="mobile-bottom-nav">
+        <div class="nav-item active" data-view="listen-now">
+            <i class="material-icons">headphones</i>
+            <span>Listen Now</span>
+        </div>
+        <div class="nav-item" data-view="library">
+            <i class="material-icons">library_music</i>
+            <span>Library</span>
+        </div>
+        <div class="nav-item">
+            <i class="material-icons">album</i>
+            <span>Mixes</span>
+        </div>
+        <div class="nav-item">
+            <i class="material-icons">shopping_bag</i>
+            <span>Shop</span>
+        </div>
+    </nav>
+
+    
+
+    
+
+    <script src="js/app.js"></script>
+    <script src="js/ui.js"></script>
+</body>
+</html>
