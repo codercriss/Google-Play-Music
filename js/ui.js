@@ -1,4 +1,4 @@
-/* ===== COMPLETED UI (visual only: no real playback / data) ===== */
+/* ===== Screens, menus and demo content. Playback lives in player.js / player-ui.js ===== */
     (function () {
         var $ = function (s, r) { return (r || document).querySelector(s); };
         var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
@@ -25,6 +25,7 @@
             var el = $('#toast'); el.textContent = t; el.classList.add('show');
             clearTimeout(toast.t); toast.t = setTimeout(function () { el.classList.remove('show'); }, 2200);
         }
+        window.showToast = toast;   // used by player-ui.js
         var SONGS = [['DAFTENDIREKT','DAFT PUNK - HOMEWORK','2:45'],['AERODYNAMIC','DAFT PUNK - DISCOVERY','3:28'],['DIGITAL LOVE','DAFT PUNK - DISCOVERY','4:58'],['NIGHTVISION','DAFT PUNK - DISCOVERY','1:45'],['SOMETHING ABOUT US','DAFT PUNK - DISCOVERY','3:51'],['VOYAGER','DAFT PUNK - DISCOVERY','3:48'],['CRESCENDOLLS','DAFT PUNK - DISCOVERY','3:32'],['VERDIS QUO','DAFT PUNK - DISCOVERY','3:45']];
         function rows(n, trash) {
             return SONGS.slice(0, n).map(function (s, i) {
@@ -151,13 +152,13 @@
             '<div class="panel"><h3>Devices</h3><div class="set-row"><div>This browser<small>Active now</small></div><span style="color:var(--text-muted);font-size:12px">Current</span></div><div class="set-row"><div>Pixel phone<small>Last used 2 days ago</small></div><button class="btn-ghost" data-toast="Device removed">Remove</button></div></div>' +
             '<div class="panel"><h3>Language</h3><div class="set-row"><div>Display language</div><select><option>English</option><option>Français</option><option>Español</option><option>Twi</option></select></div></div>');
 
-        view('add', '<div class="drop">' + icon('cloud_upload') + '<h3>Drag and drop songs here</h3><p>MP3, AAC, FLAC and more. Up to 100,000 songs.</p><button class="btn-solid">Select from your computer</button></div>' +
-            '<div class="panel"><h3>Recent uploads</h3>' + [['Digital Love.mp3', 100, 'check_circle'], ['Voyager.mp3', 100, 'check_circle'], ['Nightvision.flac', 64, 'sync'], ['Aerodynamic.mp3', 18, 'sync']].map(function (u) { return '<div class="up-row"><div class="name">' + u[0] + '</div><div class="bar"><span style="width:' + u[1] + '%"></span></div>' + icon(u[2]) + '</div>'; }).join('') + '</div>');
+        view('add', '<div class="drop" id="add-drop">' + icon('library_add') + '<h3>Add songs to play</h3><p>MP3, M4A, AAC, WAV, FLAC and more. On a computer you can also drag files into this window.</p><button class="btn-solid" id="add-pick">Choose songs</button><input type="file" id="add-input" accept="audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg,.opus" multiple hidden><p class="note">For now, songs stay only until you close the app. Saving them is coming in the next update.</p></div>' +
+            '<div class="panel"><h3>Your queue</h3><div id="add-session"></div></div>');
 
         view('trash', head('Trash', 'Songs are deleted forever after 30 days') + '<div style="display:flex;justify-content:flex-end;margin:-8px 0 8px"><button class="btn-ghost" data-toast="Trash emptied">Empty trash</button></div>' + listHead.replace(/<div class="song-col-plays">.*?<\/div><\/div>$/, '</div>') + '<div>' + rows(3, 1) + '</div>');
 
         view('help', '<div class="panel"><h3>How can we help?</h3><div style="padding:16px 24px"><input class="field" placeholder="Describe your issue"></div></div>' +
-            '<div class="panel"><h3>Popular questions</h3>' + [['How do I upload my own music?', 'Open Add music from the menu, then drag your files in or choose them from your computer.'], ['How do I make a playlist?', 'Tap the plus next to Playlists, name it, and add songs from any song menu.'], ['Can I listen offline?', 'Offline listening comes with a paid plan. Downloaded songs stay on your device.'], ['How do I restore a deleted song?', 'Open Trash from the menu and choose Restore. Songs stay there for 30 days.']].map(function (q) { return '<details><summary>' + q[0] + '</summary><p>' + q[1] + '</p></details>'; }).join('') + '</div>' +
+            '<div class="panel"><h3>Popular questions</h3>' + [['How do I add my own music?', 'Open Add music from the menu and choose songs from your phone or computer. For now they stay only until you close the app; saving them is coming in the next update.'], ['Are there keyboard shortcuts?', 'On a computer: Space plays or pauses, the left and right arrows jump 5 seconds, Shift with an arrow skips to the previous or next song, and M mutes.'], ['How do I make a playlist?', 'Tap the plus next to Playlists, name it, and add songs from any song menu.'], ['Can I listen offline?', 'The app opens offline once you have visited it online. Saving your songs on the device for offline listening is coming in the next update.'], ['How do I restore a deleted song?', 'Open Trash from the menu and choose Restore. Songs stay there for 30 days.']].map(function (q) { return '<details><summary>' + q[0] + '</summary><p>' + q[1] + '</p></details>'; }).join('') + '</div>' +
             '<div class="panel"><h3>Send feedback</h3><div style="padding:16px 24px;display:flex;flex-direction:column;gap:12px"><select><option>Suggestion</option><option>Something is broken</option><option>Other</option></select><textarea class="field" rows="4" placeholder="Tell us what happened"></textarea><div><button class="btn-solid" data-toast="Feedback sent">Send feedback</button></div></div></div>');
 
         /* extra sections on Listen Now */
@@ -185,8 +186,8 @@
         /* ---------- Modal, queue, volume, cast, chips, toasts ---------- */
         document.body.insertAdjacentHTML('beforeend',
             '<div class="scrim" id="modal"><div class="modal"><h3>New playlist</h3><div class="body"><input class="field" placeholder="Name"><textarea class="field" rows="3" placeholder="Description (optional)"></textarea><select><option>Private</option><option>Public</option></select></div><div class="foot"><button class="btn-ghost" data-close="1">Cancel</button><button class="btn-solid" data-close="1" data-toast="Playlist created">Create playlist</button></div></div></div>' +
-            '<div class="queue" id="queue"><div class="pop-head">Queue<span><a data-toast="Queue cleared">Clear</a> &nbsp; <a id="q-close">Close</a></span></div><div class="list">' +
-            SONGS.map(function (s, i) { return '<div class="q-row' + (i === 3 ? ' now' : '') + '">' + icon(i === 3 ? 'volume_up' : 'drag_handle') + '<div>' + s[0] + '<small>' + s[1] + '</small></div><span>' + s[2] + '</span></div>'; }).join('') + '</div></div><div class="toast" id="toast"></div>');
+            '<div class="queue" id="queue"><div class="pop-head">Queue<span><a id="q-clear">Clear</a> &nbsp; <a id="q-close">Close</a></span></div><div class="list"></div></div>' +
+            '<div class="toast" id="toast"></div>');
         var modal = $('#modal'), queue = $('#queue');
         modal.addEventListener('click', function (e) { if (e.target === modal || e.target.dataset.close) modal.classList.remove('open'); });
         $('#q-close').onclick = function () { queue.classList.remove('open'); };

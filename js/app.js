@@ -58,8 +58,6 @@ function toggleSidebar() {
         var fullscreenPlayer = document.getElementById('fullscreen-player');
         var fsBottomBar = document.getElementById('fs-bottom-bar');
         var fsCloseBtn = document.getElementById('fs-close');
-        var miniPlayBtn = document.getElementById('mini-play-btn');
-        var fsPlayBtn = document.getElementById('fs-play-btn');
 
         function isMobile() {
             return window.innerWidth <= MOBILE_BREAKPOINT;
@@ -79,6 +77,8 @@ function toggleSidebar() {
         miniPlayer.addEventListener('click', function(e) {
             // Don't open the full-screen player if a control button was tapped directly
             if (e.target.closest('.player-center') || e.target.closest('.player-right')) return;
+            // Nothing is playing yet: send people to Add music instead of an empty player
+            if (window.Player && !Player.hasTrack()) { showView('add'); return; }
             openFullscreenPlayer();
         });
 
@@ -115,24 +115,7 @@ function toggleSidebar() {
             });
         })();
 
-        // Keep mini player and full-screen play/pause buttons in sync
-        function togglePlayIcon(iconEl) {
-            var isPlaying = iconEl.textContent.trim() === 'pause';
-            iconEl.textContent = isPlaying ? 'play_arrow' : 'pause';
-        }
-
-        miniPlayBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            var icon = miniPlayBtn.querySelector('.material-icons');
-            togglePlayIcon(icon);
-            fsPlayBtn.querySelector('.material-icons').textContent = icon.textContent;
-        });
-
-        fsPlayBtn.addEventListener('click', function() {
-            var icon = fsPlayBtn.querySelector('.material-icons');
-            togglePlayIcon(icon);
-            miniPlayBtn.querySelector('.material-icons').textContent = icon.textContent;
-        });
+        // Play/pause and the other controls are handled by js/player-ui.js
 
         // If the window is resized past the breakpoint, hide the full-screen player
         window.addEventListener('resize', function() {

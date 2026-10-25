@@ -544,7 +544,7 @@
         .progress-current {
             height: 100%;
             background-color: var(--primary-orange);
-            width: 35%;
+            width: 0%;
         }
 
         .player-left {
@@ -1016,7 +1016,7 @@
 
             .fs-overlay-progress-current {
                 height: 100%;
-                width: 35%;
+                width: 0%;
                 background-color: #ffffff;
                 border-radius: 2px;
                 position: relative;

@@ -124,10 +124,51 @@
         .toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:#323232;color:#fff;font-size:13px;padding:10px 20px;border-radius:2px;z-index:1200;opacity:0;pointer-events:none;transition:opacity .2s}
         .toast.show{opacity:1}
         @media (max-width:768px){
-            .queue{width:auto;left:0;bottom:0;top:64px;max-height:none;z-index:450}
+            .queue{width:auto;left:0;bottom:0;top:64px;max-height:none;z-index:520}
             .hero{padding:20px}.hero h2{font-size:20px}
             .pl-art{width:110px;height:110px}.pl-hero h1{font-size:22px}
             .set-row{padding:12px 16px}.up-row .name{width:100px}
             .song-col-plays,.song-row-plays{display:none}
             .toast{bottom:150px}
         }
+
+/* ===== Player (Phase 2) ===== */
+.player-center .material-icons.on,.fs-bottom-bar .material-icons.on{color:var(--primary-orange)}
+.now-playing-img,.fs-artwork-img{overflow:hidden}
+.track-time{font-size:11px;color:var(--text-muted);margin-top:4px;font-variant-numeric:tabular-nums;min-height:13px}
+
+/* progress bars: bigger invisible touch/click area, drag to seek */
+.progress-bar{cursor:pointer;touch-action:none;transition:height .1s}
+.progress-bar::before{content:'';position:absolute;left:0;right:0;top:-6px;bottom:-8px}
+.progress-bar:hover{height:5px}
+.fs-overlay-progress-bar{cursor:pointer;touch-action:none}
+.fs-overlay-progress-bar::before{content:'';position:absolute;left:-8px;right:-8px;top:-18px;bottom:-18px}
+.fs-overlay-progress-current::after{width:14px;height:14px;right:-7px}
+
+/* queue rows */
+.q-row{user-select:none;-webkit-user-select:none}
+.q-row .q-main{flex:1;min-width:0}
+.q-row .q-title,.q-row small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q-handle{display:flex;align-items:center;flex:0 0 auto;touch-action:none;cursor:grab;padding:8px 6px 8px 0;margin:-8px 0}
+.q-time{flex:0 0 auto;font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+.q-x{display:flex;flex:0 0 auto;cursor:pointer;padding:6px;margin:-6px -6px -6px 0;border-radius:50%}
+.q-x:hover{background:rgba(0,0,0,.07)}
+.q-row.failed{opacity:.55}
+.q-row.failed .q-title{text-decoration:line-through}
+.q-row.shifting{transition:transform .15s ease}
+.q-row.dragging{position:relative;z-index:2;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.28);transition:none;cursor:grabbing}
+.q-empty{padding:32px 24px;text-align:center;color:var(--text-muted);font-size:13px;line-height:1.6}
+.q-empty .btn-solid{margin-top:12px}
+.queue .list{-webkit-overflow-scrolling:touch}
+
+/* Add music screen */
+.drop.over{border-color:var(--primary-orange);background:#fff8f0}
+.drop .note{margin:16px 0 0;font-size:12px}
+.sess-row{cursor:pointer}
+.sess-row:hover{background:var(--sidebar-hover)}
+.sess-row .name{flex:1;width:auto;min-width:0}
+.sess-row .name small{color:var(--text-muted);margin-left:6px}
+.empty-note{padding:24px;text-align:center;color:var(--text-muted);font-size:13px}
+
+/* the desktop-only elapsed time has no room on the phone mini player */
+@media (max-width:768px){.track-time{display:none}}

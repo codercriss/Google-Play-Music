@@ -1,0 +1,386 @@
+/* ==========================================================================
+   Player UI
+
+   Connects the engine (js/player.js) to the page: the desktop player bar, the
+   phone mini player, the full-screen player, the queue panel, the Add music
+   screen and the keyboard shortcuts.
+
+   Everything on screen is drawn FROM the engine's events, never from which
+   button was tapped, so a lock-screen pause or a phone call shows up correctly.
+   ========================================================================== */
+(function () {
+    'use strict';
+    var P = window.Player;
+    var mini = document.getElementById('mini-player');
+    var qEl = document.getElementById('queue');
+    if (!P || !mini || !qEl) return;
+
+    var $ = function (s, r) { return (r || document).querySelector(s); };
+    var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+    var clamp = function (v, lo, hi) { return Math.max(lo, Math.min(hi, v)); };
+
+    function toast(t) { if (window.showToast) window.showToast(t); }
+    function esc(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+    function fmt(sec) {
+        if (!isFinite(sec) || sec < 0) sec = 0;
+        sec = Math.floor(sec);
+        var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+        return (h ? h + ':' + (m < 10 ? '0' : '') + m : m) + ':' + (s < 10 ? '0' : '') + s;
+    }
+    function fmtDur(sec) { return isFinite(sec) ? fmt(sec) : '\u2013:\u2013'; }
+
+    var PAL = [['#ef6c00', '#ffb74d'], ['#5e35b1', '#9575cd'], ['#00897b', '#4db6ac'], ['#d81b60', '#f48fb1'],
+               ['#1e88e5', '#64b5f6'], ['#43a047', '#a5d6a7'], ['#546e7a', '#b0bec5'], ['#f4511e', '#ffab91']];
+    function gradient(i) { var p = PAL[i % PAL.length]; return 'linear-gradient(135deg,' + p[0] + ',' + p[1] + ')'; }
+
+    function goAdd() {
+        qEl.classList.remove('open');
+        if (typeof closeFullscreenPlayer === 'function') closeFullscreenPlayer();
+        if (typeof showView === 'function') showView('add');
+    }
+
+
+    /* ------------------------------------------------------------ elements */
+
+    var el = {
+        miniTitle: $('.track-title', mini), miniArtist: $('.track-artist', mini), miniTime: $('.track-time', mini),
+        miniArt: $('.now-playing-img', mini), miniBar: $('#mini-progress'), miniFill: $('.progress-current', mini),
+        headTitle: $('.fs-header .track-title'), headArtist: $('.fs-header .track-artist'), headArt: $('.fs-header .now-playing-img'),
+        fsArt: $('.fs-artwork-img'), fsTitle: $('.fs-overlay-title'), fsArtist: $('.fs-overlay-artist'),
+        fsBar: $('#fs-progress'), fsFill: $('.fs-overlay-progress-current'),
+        fsCur: $('#fs-time-cur'), fsDur: $('#fs-time-dur')
+    };
+    function setText(node, text) { if (node && node.textContent !== text) node.textContent = text; }
+
+
+    /* ------------------------------------------------------------ now playing */
+
+    var lastArtKey = -1;
+    function drawArt(node, track, size) {
+        if (!node) return;
+        node.style.background = track ? gradient(track.id) : '#111';
+        node.innerHTML = '<i class="material-icons" style="font-size:' + size + 'px;color:rgba(255,255,255,' +
+            (track ? '.9' : '.3') + ')">music_note</i>';
+    }
+
+    function renderTrack() {
+        var s = P.getState(), t = s.current;
+        var title = t ? t.title : 'Nothing playing';
+        var artist = t ? t.artist : 'Add music to get started';
+        setText(el.miniTitle, title);   setText(el.miniArtist, artist);
+        setText(el.headTitle, title);   setText(el.headArtist, artist);
+        setText(el.fsTitle, title);     setText(el.fsArtist, artist);
+        var key = t ? t.id : 0;
+        if (key !== lastArtKey) {
+            lastArtKey = key;
+            drawArt(el.miniArt, t, 36); drawArt(el.headArt, t, 36); drawArt(el.fsArt, t, 120);
+        }
+        renderTime();
+    }
+
+    function renderState() {
+        var s = P.getState();
+        var icon = s.playing ? 'pause' : 'play_arrow';
+        $$('[data-player="play"] .material-icons').forEach(function (i) { setText(i, icon); });
+    }
+
+    function renderMode() {
+        var s = P.getState();
+        $$('[data-player="shuffle"]').forEach(function (n) { n.classList.toggle('on', s.shuffle); });
+        $$('[data-player="repeat"]').forEach(function (n) {
+            n.classList.toggle('on', s.repeat !== 'off');
+            setText(n, s.repeat === 'one' ? 'repeat_one' : 'repeat');
+        });
+    }
+
+    function renderVolume() {
+        var s = P.getState();
+        var v = s.muted ? 0 : s.volume;
+        setText($('[data-player="volume"]'), v === 0 ? 'volume_off' : (v < 0.4 ? 'volume_down' : 'volume_up'));
+        var r = $('.vol-pop input[type=range]');
+        if (r && document.activeElement !== r) r.value = Math.round(v * 100);
+    }
+
+
+    /* ------------------------------------------------------------ progress + seeking */
+
+    var seeking = false, seekFrac = 0, lastPct = '';
+
+    function renderTime() {
+        var s = P.getState();
+        var hasDur = isFinite(s.duration) && s.duration > 0;
+        var frac = hasDur ? clamp(s.time / s.duration, 0, 1) : 0;
+        if (seeking) frac = seekFrac;
+        var time = seeking && hasDur ? seekFrac * s.duration : s.time;
+        var pct = (frac * 100).toFixed(2) + '%';
+        if (pct !== lastPct) {
+            lastPct = pct;
+            if (el.miniFill) el.miniFill.style.width = pct;
+            if (el.fsFill) el.fsFill.style.width = pct;
+        }
+        var cur = fmt(time), dur = hasDur ? fmt(s.duration) : '0:00';
+        setText(el.fsCur, cur);
+        setText(el.fsDur, dur);
+        setText(el.miniTime, s.current ? cur + ' / ' + dur : '');
+    }
+
+    function makeSeekable(bar, enabled) {
+        if (!bar) return;
+        var active = false;
+        function fracAt(e) { var r = bar.getBoundingClientRect(); return clamp((e.clientX - r.left) / r.width, 0, 1); }
+        // The full-screen player closes on a downward swipe; dragging the bar must not count as one
+        bar.addEventListener('touchstart', function (e) { if (enabled()) e.stopPropagation(); }, { passive: true });
+        bar.addEventListener('pointerdown', function (e) {
+            var s = P.getState();
+            if (!enabled() || !s.current || !isFinite(s.duration) || s.duration <= 0) return;
+            active = true; seeking = true; seekFrac = fracAt(e);
+            try { bar.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ }
+            e.preventDefault();
+            renderTime();
+        });
+        bar.addEventListener('pointermove', function (e) { if (active) { seekFrac = fracAt(e); renderTime(); } });
+        function finish(commit) {
+            if (!active) return;
+            active = false;
+            if (commit) P.seek(seekFrac * P.getState().duration);
+            seeking = false;
+            renderTime();
+        }
+        bar.addEventListener('pointerup', function () { finish(true); });
+        bar.addEventListener('pointercancel', function () { finish(false); });
+    }
+    var isPhoneLayout = function () { return typeof isMobile === 'function' && isMobile(); };
+    makeSeekable(el.miniBar, function () { return !isPhoneLayout(); });   // on a phone the thin mini bar just opens the full player
+    makeSeekable(el.fsBar, function () { return true; });
+
+    // Smooth progress while playing (timeupdate alone only ticks about 4 times a second)
+    var raf = 0;
+    function loop() {
+        raf = 0;
+        renderTime();
+        if (P.getState().playing && !document.hidden) raf = requestAnimationFrame(loop);
+    }
+    function kick() { if (!raf) raf = requestAnimationFrame(loop); }
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) { renderTime(); kick(); } });
+
+
+    /* ------------------------------------------------------------ queue panel */
+
+    var qList = $('.list', qEl), qHead = $('.pop-head', qEl);
+    var dragging = false, renderPending = false;
+
+    function renderQueue() {
+        if (dragging) { renderPending = true; return; }
+        var s = P.getState(), n = s.queue.length;
+        if (qHead && qHead.firstChild) qHead.firstChild.textContent = n ? 'Queue \u00b7 ' + n + (n === 1 ? ' song' : ' songs') : 'Queue';
+        if (!n) {
+            qList.innerHTML = '<div class="q-empty">Your queue is empty.<br><button class="btn-solid" data-act="add-music">Add music</button></div>';
+        } else {
+            qList.innerHTML = s.queue.map(function (t, i) {
+                return '<div class="q-row' + (i === s.index ? ' now' : '') + (t.failed ? ' failed' : '') + '" data-i="' + i + '">' +
+                    '<span class="q-handle" title="Drag to reorder"><i class="material-icons">drag_handle</i></span>' +
+                    '<div class="q-main"><div class="q-title">' + esc(t.title) + '</div><small>' + esc(t.artist) + '</small></div>' +
+                    '<span class="q-time">' + (t.failed ? 'can\u2019t play' : fmtDur(t.duration)) + '</span>' +
+                    '<span class="q-x" data-act="remove" title="Remove"><i class="material-icons">close</i></span></div>';
+            }).join('');
+        }
+        renderSession();
+    }
+
+    function scrollToNow() {
+        if (!qEl.classList.contains('open')) return;
+        var n = $('.q-row.now', qList);
+        if (n && n.scrollIntoView) n.scrollIntoView({ block: 'nearest' });
+    }
+
+    qList.addEventListener('click', function (e) {
+        if (e.target.closest('[data-act="add-music"]')) { goAdd(); return; }
+        var row = e.target.closest('.q-row');
+        if (!row) return;
+        var i = +row.dataset.i;
+        if (e.target.closest('.q-x')) { P.removeAt(i); return; }
+        if (e.target.closest('.q-handle')) return;
+        if (i === P.getState().index) P.toggle(); else P.playIndex(i);
+    });
+
+    var clearLink = $('#q-clear');
+    if (clearLink) clearLink.addEventListener('click', function () {
+        if (P.getState().queue.length) { P.clear(); toast('Queue cleared'); }
+    });
+
+    /* Drag a row by its handle to reorder (mouse and touch). */
+    qList.addEventListener('pointerdown', function (e) {
+        var handle = e.target.closest('.q-handle');
+        var row = handle && handle.closest('.q-row');
+        if (!row) return;
+        var rows = $$('.q-row', qList);
+        if (rows.length < 2) return;
+        e.preventDefault();
+
+        var from = rows.indexOf(row), to = from, startY = e.clientY;
+        var rects = rows.map(function (r) { var b = r.getBoundingClientRect(); return { mid: b.top + b.height / 2, h: b.height }; });
+        var h = rects[from].h;
+        dragging = true;
+        row.classList.add('dragging');
+        rows.forEach(function (r) { if (r !== row) r.classList.add('shifting'); });
+        try { handle.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ }
+
+        function onMove(ev) {
+            var dy = ev.clientY - startY;
+            row.style.transform = 'translateY(' + dy + 'px)';
+            var centre = rects[from].mid + dy, t = 0;
+            rects.forEach(function (r, j) { if (j !== from && r.mid < centre) t++; });
+            to = t;
+            rows.forEach(function (r, j) {
+                if (j === from) return;
+                var shift = 0;
+                if (from < to && j > from && j <= to) shift = -h;
+                else if (to < from && j >= to && j < from) shift = h;
+                r.style.transform = shift ? 'translateY(' + shift + 'px)' : '';
+            });
+        }
+        function end(commit) {
+            handle.removeEventListener('pointermove', onMove);
+            handle.removeEventListener('pointerup', onUp);
+            handle.removeEventListener('pointercancel', onCancel);
+            try { handle.releasePointerCapture(e.pointerId); } catch (x) { /* ignore */ }
+            rows.forEach(function (r) { r.style.transform = ''; r.classList.remove('shifting', 'dragging'); });
+            dragging = false;
+            var stale = renderPending;
+            renderPending = false;
+            if (commit && to !== from) P.move(from, to);      // emits 'queue', which redraws
+            else if (stale) renderQueue();
+        }
+        function onUp() { end(true); }
+        function onCancel() { end(false); }
+        handle.addEventListener('pointermove', onMove);
+        handle.addEventListener('pointerup', onUp);
+        handle.addEventListener('pointercancel', onCancel);
+    });
+
+    function toggleQueue() {
+        qEl.classList.toggle('open');
+        scrollToNow();
+    }
+    var desktopQueueIcon = $$('.player-right > *')[2];
+    if (desktopQueueIcon) desktopQueueIcon.addEventListener('click', function () { setTimeout(scrollToNow, 0); });
+
+
+    /* ------------------------------------------------------------ Add music screen */
+
+    function renderSession() {
+        var box = $('#add-session');
+        if (!box) return;
+        var s = P.getState();
+        if (!s.queue.length) {
+            box.innerHTML = '<div class="empty-note">Nothing here yet. Songs you add show up here and in your queue.</div>';
+            return;
+        }
+        box.innerHTML = s.queue.map(function (t, i) {
+            var ic = t.failed ? 'error' : (i === s.index ? 'volume_up' : 'check_circle');
+            return '<div class="up-row sess-row" data-i="' + i + '"><div class="name">' + esc(t.title) +
+                ' <small>' + esc(t.artist) + '</small></div><span class="q-time">' +
+                (t.failed ? 'can\u2019t play' : fmtDur(t.duration)) + '</span><i class="material-icons">' + ic + '</i></div>';
+        }).join('');
+    }
+
+    function handleFiles(files) {
+        if (!files || !files.length) return;
+        var res = P.addFiles(files);
+        if (!res.added) { toast(res.skipped ? 'Those files aren\u2019t audio files' : 'No files chosen'); return; }
+        var msg = 'Added ' + res.added + (res.added === 1 ? ' song' : ' songs') + ' to your queue';
+        if (res.skipped) msg += ' (' + res.skipped + ' skipped)';
+        toast(msg);
+    }
+
+    var addInput = $('#add-input'), addPick = $('#add-pick'), addDrop = $('#add-drop');
+    if (addPick && addInput) {
+        addPick.addEventListener('click', function () { addInput.click(); });
+        addInput.addEventListener('change', function () { handleFiles(addInput.files); addInput.value = ''; });
+    }
+    var sess = $('#add-session');
+    if (sess) sess.addEventListener('click', function (e) {
+        var row = e.target.closest('.sess-row');
+        if (row) P.playIndex(+row.dataset.i);
+    });
+
+    // Dropping files anywhere in the window adds them (computer only)
+    function hasFiles(e) { var t = e.dataTransfer && e.dataTransfer.types; return !!t && Array.prototype.indexOf.call(t, 'Files') !== -1; }
+    window.addEventListener('dragover', function (e) { if (hasFiles(e)) { e.preventDefault(); if (addDrop) addDrop.classList.add('over'); } });
+    window.addEventListener('dragleave', function (e) { if (!e.relatedTarget && addDrop) addDrop.classList.remove('over'); });
+    window.addEventListener('drop', function (e) {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        if (addDrop) addDrop.classList.remove('over');
+        handleFiles(e.dataTransfer.files);
+    });
+
+
+    /* ------------------------------------------------------------ buttons + keys */
+
+    document.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-player]');
+        if (b) {
+            switch (b.dataset.player) {
+                case 'play': P.toggle(); break;
+                case 'next': P.next(); break;
+                case 'prev': P.prev(); break;
+                case 'shuffle': P.toggleShuffle(); break;
+                case 'repeat': P.cycleRepeat(); break;
+                case 'queue': toggleQueue(); break;
+            }
+            return;
+        }
+        // The sample songs on the Library and playlist screens have no audio
+        var row = e.target.closest('.song-row');
+        if (row && !e.target.closest('.kebab, .trash-btns, button')) {
+            toast('That\u2019s a sample song. Add your own music to play it.');
+        }
+    });
+
+    // On a computer, tapping the empty player bar takes you to Add music (phones: app.js does this)
+    mini.addEventListener('click', function (e) {
+        if (isPhoneLayout() || P.hasTrack()) return;
+        if (e.target.closest('.player-left')) goAdd();
+    });
+
+    document.addEventListener('input', function (e) {
+        if (e.target.matches && e.target.matches('.vol-pop input[type=range]')) P.setVolume(e.target.value / 100);
+    });
+    var volIcon = $('[data-player="volume"]');
+    if (volIcon) volIcon.addEventListener('click', function () { renderVolume(); });   // slider is built by ui.js just before this runs
+
+    document.addEventListener('keydown', function (e) {
+        if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+        var t = e.target, tag = t && t.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
+        if (!P.hasTrack()) return;
+        switch (e.key) {
+            case ' ':
+            case 'Spacebar':
+                if (tag === 'BUTTON' || tag === 'SUMMARY' || tag === 'A') return;
+                P.toggle(); e.preventDefault(); break;
+            case 'ArrowRight': if (e.shiftKey) P.next(); else P.seekBy(5); e.preventDefault(); break;
+            case 'ArrowLeft': if (e.shiftKey) P.prev(); else P.seekBy(-5); e.preventDefault(); break;
+            case 'm': case 'M': P.toggleMute(); break;
+        }
+    });
+
+
+    /* ------------------------------------------------------------ wire the engine's events */
+
+    P.on('track', function () { renderTrack(); renderQueue(); scrollToNow(); });
+    P.on('queue', renderQueue);
+    P.on('state', function () { renderState(); kick(); });
+    P.on('time', renderTime);
+    P.on('mode', renderMode);
+    P.on('volume', renderVolume);
+    P.on('message', toast);
+    P.on('needmusic', function () { toast('Add some music first'); goAdd(); });
+
+    renderTrack(); renderState(); renderMode(); renderVolume(); renderQueue();
+})();

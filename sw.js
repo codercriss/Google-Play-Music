@@ -15,7 +15,7 @@
 */
 'use strict';
 
-var VERSION = 'v1';
+var VERSION = 'v2';
 var SHELL_CACHE = 'gpm-shell-' + VERSION;
 var FONT_CACHE = 'gpm-fonts-' + VERSION;
 var NETWORK_TIMEOUT_MS = 3000;      // only used when a saved copy exists to fall back on
@@ -30,6 +30,8 @@ var SHELL_FILES = [
     'css/ios.css',
     'js/app.js',
     'js/ui.js',
+    'js/player.js',
+    'js/player-ui.js',
     'js/pwa.js',
     'assets/icon.png',
     'assets/logo.png',

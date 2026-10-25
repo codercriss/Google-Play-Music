@@ -1,8 +1,8 @@
 # How it works (today)
 
-This describes the project **as it is at the end of Phase 1**. It will be updated at the end of each phase.
+This describes the project **as it is at the end of Phase 2**. It will be updated at the end of each phase.
 
-In one sentence: a responsive, plain HTML/CSS/JS recreation of the Google Play Music web app that **installs on an iPhone and opens offline**. It looks complete, but **the content is not real yet**: no audio plays, and all songs, albums and settings are hard-coded placeholders.
+In one sentence: a responsive, plain HTML/CSS/JS recreation of the Google Play Music web app that **installs on an iPhone and opens offline**. **It plays real audio**: add songs from your phone or computer and the player, queue, shuffle, repeat, seek bar and lock-screen controls all work. Songs are only kept until you close the app (Phase 3 fixes that). Everything else, such as the library, albums and playlists, is still hard-coded sample content.
 
 ---
 
@@ -28,8 +28,10 @@ Opening `index.html` directly also works, but offline support only runs on `http
 | `css/styles.css` | ~29 KB | Variables, layout, header, sidebar, cards, song rows, player bar, and all mobile rules (two breakpoints: 992 px and 768 px) |
 | `css/components.css` | ~11 KB | Popup menus, library tabs, settings/help/upload panels, modal, queue panel, toast |
 | `css/ios.css` | ~7 KB | iPhone-only fixes: safe areas, status-bar strip, screen height (see iPhone layout) |
-| `js/app.js` | ~6 KB | Screen switching, mobile drawer, mobile full-screen player (open, swipe-down close, play/pause icon swap) |
-| `js/ui.js` | ~24 KB | Everything else: builds extra screens, all dropdown menus, library tabs, modal, queue, toast |
+| `js/app.js` | ~5 KB | Screen switching, mobile drawer, mobile full-screen player (open, swipe-down close) |
+| `js/ui.js` | ~24 KB | Everything else: builds extra screens, all dropdown menus, library tabs, modal, toast, the Add music screen |
+| `js/player.js` | ~18 KB | The playback engine: the one audio element, the queue, shuffle/repeat, lock-screen controls. Never touches the page |
+| `js/player-ui.js` | ~18 KB | Draws the engine on screen: player bars, progress, queue panel with drag-to-reorder, Add music, keyboard shortcuts |
 | `js/pwa.js` | ~5 KB | Registers the service worker, measures the iOS 26 bottom strip, hidden diagnostic panel |
 | `sw.js` | ~7 KB | Service worker: saves the app for offline use (see Offline and install) |
 | `manifest.webmanifest` | <1 KB | Install info: name, colours, icons |
@@ -45,11 +47,13 @@ Opening `index.html` directly also works, but offline support only runs on `http
 1. The browser loads `index.html`, which contains the markup for the two main screens and the player.
 2. Scripts are plain files (not modules) and **must load in this order**:
    1. `app.js` defines `showView()`, `toggleSidebar()`, `closeSidebar()` and the full-screen player behaviour.
-   2. `ui.js` runs in one self-contained function. It reaches into the existing page, adds the extra screens and menus, and **replaces `showView` with a wrapped version** so the new screens work.
+   2. `ui.js` runs in one self-contained function. It reaches into the existing page, adds the extra screens and menus, and **replaces `showView` with a wrapped version** so the new screens work. It also shares its toast as `window.showToast`.
+   3. `player.js` creates the audio element and `window.Player`. It has no dependencies on the page.
+   4. `player-ui.js` finds the player bars, queue panel and Add music screen (built by the scripts above) and connects them to `Player`.
 3. `pwa.js` loads last and registers the service worker once the page has finished loading.
 4. `index.html` also calls `toggleSidebar()` and `closeSidebar()` from inline `onclick` attributes, so those two must stay global.
 
-There is no state object. What's on screen **is** the state: for example, the app decides whether the player is playing by reading the text of the play/pause icon.
+The player has a real state (inside `player.js`), and the screen is drawn from it. The rest of the app (screens, menus) still keeps its state in the page itself, for example which screen is visible.
 
 ---
 
@@ -87,11 +91,11 @@ Switching screens means showing one `.content-view` panel and hiding the others.
 
 **New playlist dialog.** A modal added to the page by `ui.js`. Nothing is saved when you press Create.
 
-**Queue panel.** A side panel (full-screen on mobile) listing the demo songs. Toggled from the queue icon.
+**Queue panel.** A side panel (full-screen on mobile). `ui.js` creates the empty panel; `player-ui.js` fills it with the real queue. On a phone it sits above the full-screen player so it can be opened from there.
 
 **Song menu.** Three-dot buttons are added to every song row by `addKebabs()`. Every menu item only shows a toast.
 
-**Mobile full-screen player.** `app.js` handles opening it (tap the mini player, ignoring taps on its buttons), closing it (tap the song title area at the top, or swipe down more than 100 px), and keeping the mini and full-screen play/pause icons matching. The song details are duplicated in the markup for the mini player and the full-screen player.
+**Mobile full-screen player.** `app.js` handles opening it (tap the mini player, ignoring taps on its buttons) and closing it (tap the song title area at the top, or swipe down more than 100 px). With nothing queued, tapping the mini player goes to Add music instead. `player-ui.js` keeps the song details, play buttons and progress in the mini and full-screen players matching.
 
 ---
 
@@ -148,18 +152,51 @@ Adding anything new that is fixed to the top or bottom of the screen means givin
 
 ---
 
+## Playback (`js/player.js` and `js/player-ui.js`)
+
+**Two halves.** `player.js` is the engine: it owns the audio, the queue and the modes, and announces what changed. `player-ui.js` listens and draws. Nothing on screen is updated because a button was tapped; it's updated because the audio element said something happened. That's why a pause from the lock screen, or a phone call, shows up correctly on the buttons.
+
+**One audio element.** Created in code (not in the page) and used for every song. This matters on iPhone: iOS only lets audio start from a tap, and it remembers that permission *per element*. Reusing the same element is what lets the next song start by itself and keep going with the screen locked.
+
+**Getting songs in.** Add music, then **Choose songs** opens the phone's file picker (computer: drag files anywhere into the window). Each file becomes a track with a temporary in-memory address (a "blob URL"). Nothing is uploaded or saved; the addresses are released when a song is removed or the queue is cleared, and everything is forgotten when the app closes. Files that aren't audio (judged by type, then by extension) are skipped and counted in the message.
+
+**Names.** There are no real tags yet (Phase 3). `Artist - Title.mp3` is split into artist and title, a leading track number such as `01 - ` is dropped, and anything else becomes the title with "Unknown artist".
+
+**Queue and modes**
+- The queue is a list plus a pointer to the current song. Adding songs while one plays appends them without interrupting it. If nothing was queued, the first added song plays.
+- **Shuffle really reorders the queue** (as the original did), keeping the playing song first, so the queue panel always shows what will play. Turning it off restores the order the songs were added in. Songs added while shuffled go to the end.
+- **Repeat** cycles off, all, one. Off: the queue stops after the last song (and the play button resets). All: wraps to the first. One: the song loops.
+- **Previous** restarts the song if it's more than 3 seconds in, otherwise goes back (wrapping to the last song when repeating all). **Next** on the last song with repeat off does nothing.
+- Removing the playing song moves to the one that slid into its place and keeps playing. Removing the last song while it plays loads the new last song paused rather than wrapping round.
+- A song the device can't decode is marked "can't play", a message is shown, and playback moves on. If every song fails it stops trying.
+
+**Progress and seeking.** Both progress bars (desktop bar, full-screen player) can be clicked or dragged, with mouse or finger. The phone's thin mini bar is not a seek bar: tapping it opens the full-screen player. While you drag, the bar and time follow your finger and the seek happens on release. Dragging the full-screen bar is shielded from the swipe-down-to-close gesture. Duration for each queued song is found by loading just its header one at a time; until then the queue shows a dash.
+
+**Lock screen and Control Center (Media Session).** Title, artist and the app icon as artwork, plus play, pause, previous, next and the scrubber. The next button is greyed on the last song unless repeating. The icon is also what a computer shows in its media hub.
+
+**Controls in the page.** Each control carries a `data-player="..."` attribute (`play`, `prev`, `next`, `shuffle`, `repeat`, `queue`, `volume`), and one click handler on the whole page does the work. Shuffle and repeat show orange when on, and repeat changes to the "repeat one" icon.
+
+**Volume.** The slider in the desktop volume menu sets the audio volume and is remembered (along with the repeat mode) in the browser's storage under `gpm.player.v1`. iPhones ignore page volume entirely (the side buttons control it), and the phone layout has no volume control.
+
+**Keyboard shortcuts (computer).** Space plays or pauses, Left/Right jump 5 seconds, Shift+Left/Right go to the previous or next song, M mutes. They are ignored while typing in a box, and don't take over Space until something is loaded.
+
+**Queue panel.** Click a row to play it, the x to remove it, or drag the handle to reorder (the playing song keeps playing and the pointer follows it). Dragging doesn't auto-scroll a long list yet.
+
+**Sample songs.** The rows on Library and playlist screens are still sample content with no audio, so tapping one explains that instead of doing nothing.
+
+---
+
 ## What's real and what's fake
 
 | Real | Fake |
 | --- | --- |
-| Screen switching and highlighting | Audio playback (there is no audio element) |
-| Mobile drawer and bottom nav | Song, album, artist and playlist data |
-| Mobile full-screen player open/close and swipe | Progress bars, times, track names in the player |
-| Popup menus, modal, queue panel, toasts (as UI) | Every menu action (only shows a toast) |
-| Library tabs and sort menu (as UI) | Search box, settings, upload, cast, notifications |
-| Responsive layout | Play counts, queue contents |
-| Install to Home Screen, offline opening | |
-| iPhone safe-area fit | |
+| **Audio playback** from songs you add | The songs, albums, artists and playlists on every other screen |
+| Queue, shuffle, repeat, seek, volume (computer), keyboard shortcuts | Play counts, thumbs up/down, "more" menus, cast |
+| Lock-screen / Control Center controls | Every song-menu action (only shows a toast) |
+| Screen switching, drawer, bottom nav, full-screen player | Search box, settings, notifications |
+| Popup menus, library tabs, sort (as UI) | Saving: songs vanish when the app closes (Phase 3) |
+| Install to Home Screen, offline opening, iPhone fit | |
+
 
 ---
 
@@ -169,12 +206,22 @@ None of these are bugs you'd see in normal use, but they matter for the phases a
 
 **Still open**
 
-- **Demo data lives in two places.** The Songs tab rows are in `index.html`; the playlists, queue and trash use a separate `SONGS` array in `ui.js`. They don't match, and the queue highlights a different song from the one the player shows. Phase 3 replaces both with one data store.
+- **Sample data lives in two places.** The Songs tab rows are in `index.html`; the playlists and trash use a separate `SONGS` array in `ui.js`. They don't match each other. Phase 3 replaces both with one data store (the queue is no longer part of this: it's real).
+- **Songs aren't saved.** Closing or refreshing the app empties the queue. Phase 3.
+- **Song names come from the file name**, not tags, and there is no artwork beyond a generated colour cover. Phase 3.
+- **Song lengths in the queue are read one file at a time**, and on iPhone they may show as a dash until a song is played. Not verified on a device.
+- **Reordering a very long queue by dragging** can't scroll while you drag.
 - **Sidebar items that already had a `data-view` in the HTML can trigger `showView` twice** for one click (once from `app.js`, once from `ui.js`). Harmless, but wasteful.
 - **Both mobile and desktop "next" buttons exist in the markup**; CSS shows one per layout.
 - **Lots of inline styles** in the markup, mostly on the placeholder cards. These go away as the cards become real data.
 - **Phones in landscape get the desktop layout**, which is cramped. Phase 5.
 - **Popup menus are positioned by script and don't know about the safe areas.** A menu opened right at a screen edge could sit slightly under the home bar. Low risk; revisit if it shows up on a device.
+
+**Fixed in Phase 2**
+
+- The player bars, progress, times and queue were static placeholders: now driven by real audio.
+- The queue panel showed a different song from the player: it's now the real queue.
+- The queue panel opened behind the full-screen player on phones: it now sits above it.
 
 **Fixed in Phase 1**
 
@@ -203,8 +250,8 @@ No JavaScript libraries, no build tools, no package manager. Both fonts are save
 | Phase | Touches |
 | --- | --- |
 | 1 Ship-ready shell | Done. See iPhone layout, and Offline and install |
-| 2 Playback | New player module with one audio element and one state object. `app.js` play/pause code is replaced by it; the three sets of controls and the queue panel read from that state |
-| 3 Library | New storage module (IndexedDB) and import/tag-reading module. The static library rows in `index.html` and the `SONGS` array in `ui.js` are removed and replaced by data-driven lists |
+| 2 Playback | Done. See Playback |
+| 3 Library | New storage module (IndexedDB) and tag-reading module. `Player.addFiles` is fed from storage instead of the file picker (the engine itself shouldn't need to change). The static library rows in `index.html` and the `SONGS` array in `ui.js` are replaced by data-driven lists |
 | 4 Playlists and mixes | Playlist data in storage. The song menu and playlist screens in `ui.js` get real actions |
 | 5 Polish | Fonts, backup, error states, accessibility |
 
@@ -220,7 +267,8 @@ js/
   app.js                    screen switching and drawer
   pwa.js                    registers the service worker
   ui.js                     menus and screens (shrinks over time)
-  player.js                 Phase 2
+  player.js                 playback engine
+  player-ui.js              draws the engine on screen
   store.js                  Phase 3
   import.js                 Phase 3
 assets/

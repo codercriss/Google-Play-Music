@@ -7,8 +7,8 @@ Status key: ⬜ not started · 🟨 in progress · ✅ done
 | Phase | Name | Status |
 | --- | --- | --- |
 | 0 | Baseline and docs | ✅ |
-| 1 | Ship-ready shell: Vercel, PWA, offline, iPhone safe areas | 🟨 built; waiting on your iPhone check |
-| 2 | Real playback engine | ⬜ |
+| 1 | Ship-ready shell: Vercel, PWA, offline, iPhone safe areas | ✅ |
+| 2 | Real playback engine | 🟨 built; waiting on your iPhone check |
 | 3 | Your library: import, store, browse | ⬜ |
 | 4 | Playlists, queue and mixes | ⬜ |
 | 5 | Reliability and polish | ⬜ |
@@ -42,11 +42,11 @@ Status key: ⬜ not started · 🟨 in progress · ✅ done
 
 ---
 
-## Phase 1: Ship-ready shell 🟨
+## Phase 1: Ship-ready shell ✅
 
 **Goal:** the current UI deploys to Vercel, installs from Safari with "Add to Home Screen", opens full-screen with no browser bars, still opens in airplane mode, and fills the iPhone screen properly at the top and bottom.
 
-**Status:** all code is written and tested in a desktop browser that imitates an iPhone. It is not finished until you deploy it and run `docs/testing-on-iphone.md` on a real iPhone.
+**Status:** done. Built, tested in a desktop browser that imitates an iPhone, then deployed and checked on a real iPhone with every item in `docs/testing-on-iphone.md` passing (after one fix round for the iOS 26 bottom strip).
 
 ### What was built
 
@@ -82,14 +82,14 @@ Whether the full-height workaround takes effect depends on the iOS version, and 
 - [x] A blocked or unreachable Google Fonts does not break install.
 - [x] The font-saving logic works against sample Google CSS (not against the real Google servers, which I can't reach from here).
 
-### Still to check (needs you)
+### Checked on a real iPhone
 
-- [ ] Live on a Vercel URL.
-- [ ] Real iPhone, **after fix round 1**: bottom bar reaches the bottom edge, or any strip under it is plain white and looks like part of the bar.
-- [ ] Real iPhone: Add to Home Screen works, opens full-screen, clock readable, nothing hidden by the notch or home bar.
-- [ ] Airplane mode, fully close and reopen: it still opens **with icons showing as pictures**.
-- [ ] Rotating to landscape looks right.
-- [ ] `/docs/roadmap.md` on the live site redirects to the home page.
+- [x] Live on a Vercel URL.
+- [x] Real iPhone, **after fix round 1**: bottom bar reaches the bottom edge, or any strip under it is plain white and looks like part of the bar.
+- [x] Real iPhone: Add to Home Screen works, opens full-screen, clock readable, nothing hidden by the notch or home bar.
+- [x] Airplane mode, fully close and reopen: it still opens **with icons showing as pictures**.
+- [x] Rotating to landscape looks right.
+- [x] `/docs/roadmap.md` on the live site redirects to the home page.
 
 ### Known limits
 
@@ -98,23 +98,62 @@ Whether the full-height workaround takes effect depends on the iOS version, and 
 - **iOS 26 bottom strip.** An open WebKit bug can leave a strip at the bottom of an installed app that no page element can reach. We work around it as far as is possible; a guaranteed fix would need a solid (non-see-through) status bar, which gives up the orange strip at the top. That is an option if the workaround isn't enough.
 - **Real iPhone only.** I couldn't run Safari itself here, so iOS-specific behaviour (status bar colour, the exact insets) is checked by measurement, not by eye on a device.
 
-## Phase 2: Real playback engine
+## Phase 2: Real playback engine 🟨
 
 **Goal:** the player bar actually plays audio.
 
-- One shared audio element and one player state object (current track, queue, playing, position, volume, shuffle, repeat).
-- Working controls in all three places: desktop player bar, mobile mini player, and the full-screen player. Play/pause, previous/next, seek, volume, shuffle, repeat.
-- Progress bars and times driven by the real track, replacing the static 1:12 / 3:45.
-- Queue panel shows the real queue, supports play-from-here, remove and reorder.
-- Lock-screen and Control Center controls and artwork through the Media Session API.
-- Keyboard shortcuts on desktop (space, arrows).
-- First test content: a file picker for a few songs, before the full library exists.
+**Status:** all code is written and tested in a desktop browser with real audio files. It is not finished until you run `docs/testing-playback.md` on a real iPhone, especially the lock-screen and background parts, which can only be checked on a device.
 
-**Done when:** you can pick songs, play them, skip, seek, shuffle and repeat, and control playback from the iPhone lock screen.
+### What was built
 
-**Risk:** iOS only allows audio to start from a tap, and has its own rules for background audio. Needs real-device testing.
+- **Engine** (`js/player.js`): one audio element for the whole app, a queue with a current-song pointer, shuffle, repeat (off, all, one), volume, seeking, error handling for files that can't be decoded, and Media Session (lock screen) integration.
+- **Screens** (`js/player-ui.js`): the desktop bar, the phone mini player and the full-screen player are all driven by the engine, so their buttons, titles, times and progress always agree. Both progress bars are clickable and draggable. Shuffle and repeat show their state.
+- **Queue panel:** shows the real queue with song lengths; tap to play, x to remove, drag the handle to reorder, Clear to empty. On a phone it opens above the full-screen player.
+- **Add music:** a working **Choose songs** button (file picker on a phone, drag and drop on a computer) and a list of what's queued.
+- **Lock screen / Control Center:** song name, artist, app icon, play, pause, previous, next and scrubber.
+- **Computer extras:** keyboard shortcuts (Space, arrows, M) and a working volume slider.
+- **Empty state:** with nothing queued the player says "Nothing playing", and tapping play or the player goes to Add music.
+- **Honest sample rows:** tapping a fake song on the Library or playlist screens now says it's a sample instead of doing nothing.
 
----
+### Where this differs from the original plan
+
+| Plan said | What I did | Why |
+| --- | --- | --- |
+| Queue "supports play-from-here, remove and reorder" | Done, with drag-to-reorder using a handle | Works with mouse and touch |
+| First test content: a file picker | The **Add music** screen is the picker | It already existed as a placeholder; it will be reused for the permanent library |
+| Volume | Slider on computers only; hidden on phones | iPhones ignore page volume (the side buttons control it) |
+| (not planned) | Phone queue now opens above the full-screen player | Otherwise the queue icon in that player opened it behind the player, unseen |
+| (not planned) | Volume and repeat mode are remembered | Cheap, and expected |
+
+### Checked here (desktop browser, real MP3/WAV/OGG files)
+
+- [x] Add songs: audio files queued, non-audio skipped and counted, names parsed from `Artist - Title`, first song plays by itself (58 checks across transport, keyboard, shuffle/repeat, errors, queue, volume).
+- [x] Seeking by click and drag; the bar, time labels and play icons stay in sync across the desktop bar, mini player and full-screen player.
+- [x] Shuffle on/off never loses or duplicates a song and restores the original order; repeat off/all/one behave correctly at the end of the queue.
+- [x] A corrupt file is marked "can't play", announced, and skipped; the queue keeps going.
+- [x] Queue: play from a row, remove, drag-reorder (the playing song keeps playing), remove the playing song, Clear.
+- [x] Phone layout (touch): full-screen player, drag-seeking by touch **without** closing the player even with downward drift, a real swipe-down still closes it, queue above the player, mini bar tap opens the player.
+- [x] The iOS rule is simulated: when the browser refuses to start audio until a tap, the first song is loaded and paused, "Tap play to start" is shown, a tap starts it, and the next song then starts by itself.
+- [x] Edge cases: adding songs mid-playback, removing songs before/after the current one, shuffle combined with adds and clears, wrap-around, invalid moves, memory released on removal.
+- [x] Offline: with the network off the app opens and a song can be added and played.
+- [x] All Phase 1 checks (safe areas, offline, iOS 26 strip logic) still pass.
+
+### Still to check (needs you, on a real iPhone)
+
+- [ ] Add songs from the Files app and play them (does iOS start the first one itself, or ask for a tap?).
+- [ ] Lock the phone: music continues, the lock screen shows title, artist and icon, and its buttons work.
+- [ ] Switch to another app: music continues.
+- [ ] Dragging the full-screen progress bar with a finger feels right.
+- [ ] Song lengths appear in the queue (on iPhone they may stay as a dash until played).
+- [ ] Phone call / interruption leaves the app showing paused.
+
+### Known limits
+
+- **Songs vanish when you close the app.** They live in memory until Phase 3 saves them.
+- **No tags or artwork yet:** names come from the file name and covers are generated colours. Phase 3.
+- **Formats depend on the device.** iPhone normally plays MP3, M4A/AAC, WAV and FLAC, but I haven't confirmed every format on a device; a file the phone can't decode shows "can't play" and is skipped. `.ogg` files are the most likely to fail on iPhone (they work on most computers).
+- **Dragging in a very long queue** can't auto-scroll while you drag.
+- **The Library, playlists, thumbs and song menus are still sample content.** Phases 3 and 4.
 
 ## Phase 3: Your library
 
