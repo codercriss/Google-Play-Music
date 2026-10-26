@@ -2,7 +2,7 @@
 
 > Unofficial fan project. Not affiliated with or endorsed by Google.
 
-A responsive, front-end-only recreation of the Google Play Music web UI, built with plain HTML, CSS and JavaScript. No dependencies, no build step. It installs on an iPhone like an app and opens offline. It **plays your own music**: add songs from your phone or computer and use the queue, shuffle, repeat and lock-screen controls. Songs are only kept until you close the app for now, and everything outside playback (library, playlists, albums) is still sample content (see `docs/roadmap.md`).
+A responsive, front-end-only recreation of the Google Play Music web UI, built with plain HTML, CSS and JavaScript. No dependencies, no build step. It installs on an iPhone like an app and opens offline. It **keeps and plays your own music**: add songs from your phone or computer and they are saved on the device, with their real titles, artists, albums and cover art, ready to play with no internet. Browse by song, artist, album and genre, search, use the queue, and tidy up with the Trash. Playlists, Listen Now, Instant Mixes and Settings are still sample content (see `docs/roadmap.md`).
 
 ## Run it locally
 
@@ -17,13 +17,10 @@ Roboto and Material Icons load from Google Fonts. The first time you open the ap
 
 ## Features
 
-- **Pages:** Listen Now, My Library, Instant Mixes, Shop, playlist pages, Settings, Add music, Trash, Help & Feedback
-- **Library tabs:** Playlists, Artists, Albums, Songs and Genres, with a sort dropdown
-- **Dropdowns:** apps, notifications, account, song menu (with an "Add to playlist" submenu), volume and cast
-- **Other UI:** queue panel, New playlist dialog, collapsible Playlists section, toast messages
-- **Mobile layout:** slide-out drawer, bottom nav and a swipe-down full-screen player
-- **Real playback:** add songs with Add music, then play, pause, skip, seek, shuffle and repeat. Queue panel with drag-to-reorder, lock-screen / Control Center controls, keyboard shortcuts on a computer
-- **Installable and offline:** add it to your iPhone Home Screen; it opens full-screen, even in airplane mode
+- **Your library:** Songs, Artists, Albums and Genres tabs with sorting, album / artist / genre pages, search (ignores accents), play counts, and a Trash that keeps removed songs for 30 days
+- **Adding music:** choose songs on your phone or computer (or drag them in on a computer); tags and cover art are read from the files, duplicates are skipped, and storage use is shown
+- **Playback:** play, pause, skip, seek, shuffle and repeat, a queue panel with drag-to-reorder, lock-screen / Control Center controls with the album cover, keyboard shortcuts on a computer
+- **Installable and offline:** add it to your iPhone Home Screen; it opens full-screen, and your songs play even in airplane mode
 - **iPhone screen fit:** the app fills the screen under the status bar and home indicator, with content kept clear of the notch
 
 ## Install on an iPhone
@@ -55,22 +52,26 @@ css/styles.css          base layout, header, sidebar, cards, player, mobile styl
 css/components.css      dropdowns, tabs, extra pages, modal, queue panel
 css/ios.css             iPhone-only fixes: safe areas, screen height
 js/app.js               view switching, sidebar drawer, full-screen player
-js/ui.js                dropdowns, extra pages, library tabs, modal, Add music screen
+js/ui.js                dropdowns, sample screens, modal, toast
+js/tags.js              reads song info and cover art from files
+js/store.js             the on-device database (IndexedDB)
+js/library.js           your library: import, browse, search, trash, play counts
+js/library-ui.js        the library screens, search, Trash, Add music
 js/player.js            playback engine: audio, queue, shuffle/repeat, lock screen
-js/player-ui.js         draws the player, queue and Add music; keyboard shortcuts
+js/player-ui.js         draws the player and queue; keyboard shortcuts
 js/pwa.js               registers the service worker, iPhone layout helpers, hidden diagnostics
 assets/                 app icon and logo
 assets/icons/           home-screen and install icons (+ SVG sources)
 docs/                   roadmap, how it works, iPhone test checklist
 ```
 
-Scripts are plain (non-module) files and must load in order: `app.js`, `ui.js` (extends `showView` from `app.js`), `player.js`, `player-ui.js`, then `pwa.js`.
+Scripts are plain (non-module) files and must load in order: `app.js`, `ui.js` (extends `showView` from `app.js`), `tags.js`, `store.js`, `library.js`, `player.js`, `player-ui.js`, `library-ui.js` (extends `showView` again), then `pwa.js`.
 
 ## Customizing
 
 - **Colors:** edit the CSS variables at the top of `css/styles.css` (`--primary-orange`, `--bg-color` and so on). If you change the orange, also update `theme-color` in `index.html` and `manifest.webmanifest`.
 - **App name on the Home Screen:** `apple-mobile-web-app-title` in `index.html`, and `name` / `short_name` in `manifest.webmanifest`.
-- **Sample content:** the song rows, mixes and settings on the Library, playlist and other screens are placeholder data in `js/ui.js` and `index.html`. Real songs only come from Add music.
+- **Sample content:** Listen Now, Instant Mixes, Shop, Settings and the sidebar playlists are placeholder data in `js/ui.js` and `index.html`. Your real songs only come from Add music.
 - **Keyboard shortcuts (computer):** Space play/pause, Left/Right seek 5 seconds, Shift+Left/Right previous/next, M mute.
 - **Adding a page:** create it with the `view('id', html)` helper in `js/ui.js`, add its title to `VIEW_TITLES`, and link to it with a `data-view="id"` attribute.
 - **Adding a new file to the app** (a script, stylesheet or image): add its path to `SHELL_FILES` in `sw.js` and change `VERSION` there (for example `'v1'` to `'v2'`), so the file is saved for offline use.
@@ -81,6 +82,7 @@ Scripts are plain (non-module) files and must load in order: `app.js`, `ui.js` (
 - [`docs/how-it-works.md`](docs/how-it-works.md): how the code fits together
 - [`docs/testing-on-iphone.md`](docs/testing-on-iphone.md): Phase 1 checklist (install, offline, screen fit)
 - [`docs/testing-playback.md`](docs/testing-playback.md): Phase 2 checklist (playback, lock screen)
+- [`docs/testing-library.md`](docs/testing-library.md): Phase 3 checklist (adding songs, library, offline, storage)
 
 ## License
 

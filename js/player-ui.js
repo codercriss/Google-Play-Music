@@ -60,11 +60,22 @@
     /* ------------------------------------------------------------ now playing */
 
     var lastArtKey = -1;
-    function drawArt(node, track, size) {
-        if (!node) return;
-        node.style.background = track ? gradient(track.id) : '#111';
-        node.innerHTML = '<i class="material-icons" style="font-size:' + size + 'px;color:rgba(255,255,255,' +
-            (track ? '.9' : '.3') + ')">music_note</i>';
+    function paintArt(track) {
+        var cover = track && track.coverKey && window.Library ? Library.coverUrl(track.coverKey) : null;
+        [[el.miniArt, 36], [el.headArt, 36], [el.fsArt, 120]].forEach(function (p) {
+            var node = p[0];
+            if (!node) return;
+            if (cover) { node.style.background = 'url("' + cover + '") center / cover no-repeat'; node.innerHTML = ''; return; }
+            node.style.background = track ? gradient(track.trackId) : '#111';
+            node.innerHTML = '<i class="material-icons" style="font-size:' + p[1] + 'px;color:rgba(255,255,255,' + (track ? '.9' : '.3') + ')">music_note</i>';
+        });
+    }
+    function renderArt(track) {
+        paintArt(track);
+        // the colour cover shows at once; the real artwork swaps in as soon as it has loaded
+        if (track && track.coverKey && window.Library && !Library.coverUrl(track.coverKey)) {
+            Library.loadCover(track.coverKey).then(function (u) { if (u && P.getState().current === track) paintArt(track); });
+        }
     }
 
     function renderTrack() {
@@ -75,10 +86,7 @@
         setText(el.headTitle, title);   setText(el.headArtist, artist);
         setText(el.fsTitle, title);     setText(el.fsArtist, artist);
         var key = t ? t.id : 0;
-        if (key !== lastArtKey) {
-            lastArtKey = key;
-            drawArt(el.miniArt, t, 36); drawArt(el.headArt, t, 36); drawArt(el.fsArt, t, 120);
-        }
+        if (key !== lastArtKey) { lastArtKey = key; renderArt(t); }
         renderTime();
     }
 
@@ -176,19 +184,30 @@
     function renderQueue() {
         if (dragging) { renderPending = true; return; }
         var s = P.getState(), n = s.queue.length;
-        if (qHead && qHead.firstChild) qHead.firstChild.textContent = n ? 'Queue \u00b7 ' + n + (n === 1 ? ' song' : ' songs') : 'Queue';
         if (!n) {
             qList.innerHTML = '<div class="q-empty">Your queue is empty.<br><button class="btn-solid" data-act="add-music">Add music</button></div>';
         } else {
             qList.innerHTML = s.queue.map(function (t, i) {
                 return '<div class="q-row' + (i === s.index ? ' now' : '') + (t.failed ? ' failed' : '') + '" data-i="' + i + '">' +
                     '<span class="q-handle" title="Drag to reorder"><i class="material-icons">drag_handle</i></span>' +
+                    '<span class="q-art" data-cover="' + esc(t.coverKey) + '"></span>' +
                     '<div class="q-main"><div class="q-title">' + esc(t.title) + '</div><small>' + esc(t.artist) + '</small></div>' +
                     '<span class="q-time">' + (t.failed ? 'can\u2019t play' : fmtDur(t.duration)) + '</span>' +
                     '<span class="q-x" data-act="remove" title="Remove"><i class="material-icons">close</i></span></div>';
             }).join('');
+            if (window.hydrateCovers) window.hydrateCovers(qList);
         }
-        renderSession();
+        markNow();
+    }
+
+    /* Cheap update for "the song changed": move the highlight and the count, nothing else. */
+    function markNow() {
+        var s = P.getState(), n = s.queue.length;
+        if (qHead && qHead.firstChild) qHead.firstChild.textContent = n ? 'Queue \u00b7 ' + n + (n === 1 ? ' song' : ' songs') : 'Queue';
+        var old = $('.q-row.now', qList);
+        if (old) old.classList.remove('now');
+        var row = n ? qList.children[s.index] : null;
+        if (row && row.classList.contains('q-row')) row.classList.add('now');
     }
 
     function scrollToNow() {
@@ -270,56 +289,6 @@
     if (desktopQueueIcon) desktopQueueIcon.addEventListener('click', function () { setTimeout(scrollToNow, 0); });
 
 
-    /* ------------------------------------------------------------ Add music screen */
-
-    function renderSession() {
-        var box = $('#add-session');
-        if (!box) return;
-        var s = P.getState();
-        if (!s.queue.length) {
-            box.innerHTML = '<div class="empty-note">Nothing here yet. Songs you add show up here and in your queue.</div>';
-            return;
-        }
-        box.innerHTML = s.queue.map(function (t, i) {
-            var ic = t.failed ? 'error' : (i === s.index ? 'volume_up' : 'check_circle');
-            return '<div class="up-row sess-row" data-i="' + i + '"><div class="name">' + esc(t.title) +
-                ' <small>' + esc(t.artist) + '</small></div><span class="q-time">' +
-                (t.failed ? 'can\u2019t play' : fmtDur(t.duration)) + '</span><i class="material-icons">' + ic + '</i></div>';
-        }).join('');
-    }
-
-    function handleFiles(files) {
-        if (!files || !files.length) return;
-        var res = P.addFiles(files);
-        if (!res.added) { toast(res.skipped ? 'Those files aren\u2019t audio files' : 'No files chosen'); return; }
-        var msg = 'Added ' + res.added + (res.added === 1 ? ' song' : ' songs') + ' to your queue';
-        if (res.skipped) msg += ' (' + res.skipped + ' skipped)';
-        toast(msg);
-    }
-
-    var addInput = $('#add-input'), addPick = $('#add-pick'), addDrop = $('#add-drop');
-    if (addPick && addInput) {
-        addPick.addEventListener('click', function () { addInput.click(); });
-        addInput.addEventListener('change', function () { handleFiles(addInput.files); addInput.value = ''; });
-    }
-    var sess = $('#add-session');
-    if (sess) sess.addEventListener('click', function (e) {
-        var row = e.target.closest('.sess-row');
-        if (row) P.playIndex(+row.dataset.i);
-    });
-
-    // Dropping files anywhere in the window adds them (computer only)
-    function hasFiles(e) { var t = e.dataTransfer && e.dataTransfer.types; return !!t && Array.prototype.indexOf.call(t, 'Files') !== -1; }
-    window.addEventListener('dragover', function (e) { if (hasFiles(e)) { e.preventDefault(); if (addDrop) addDrop.classList.add('over'); } });
-    window.addEventListener('dragleave', function (e) { if (!e.relatedTarget && addDrop) addDrop.classList.remove('over'); });
-    window.addEventListener('drop', function (e) {
-        if (!hasFiles(e)) return;
-        e.preventDefault();
-        if (addDrop) addDrop.classList.remove('over');
-        handleFiles(e.dataTransfer.files);
-    });
-
-
     /* ------------------------------------------------------------ buttons + keys */
 
     document.addEventListener('click', function (e) {
@@ -337,7 +306,7 @@
         }
         // The sample songs on the Library and playlist screens have no audio
         var row = e.target.closest('.song-row');
-        if (row && !e.target.closest('.kebab, .trash-btns, button')) {
+        if (row && !row.hasAttribute('data-track') && !e.target.closest('.kebab, .trash-btns, button')) {
             toast('That\u2019s a sample song. Add your own music to play it.');
         }
     });
@@ -373,7 +342,7 @@
 
     /* ------------------------------------------------------------ wire the engine's events */
 
-    P.on('track', function () { renderTrack(); renderQueue(); scrollToNow(); });
+    P.on('track', function () { renderTrack(); markNow(); scrollToNow(); });
     P.on('queue', renderQueue);
     P.on('state', function () { renderState(); kick(); });
     P.on('time', renderTime);

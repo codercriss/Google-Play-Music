@@ -172,3 +172,53 @@
 
 /* the desktop-only elapsed time has no room on the phone mini player */
 @media (max-width:768px){.track-time{display:none}}
+
+/* ===== Library (Phase 3) ===== */
+.has-cover > .material-icons{display:none}
+.song-row-art.has-cover,.card-image.has-cover,.pl-art.has-cover,.q-art.has-cover{background-size:cover!important;background-position:center!important}
+.song-row.playing .song-row-title{color:var(--primary-orange)}
+.song-row.playing{background:#fff8f0}
+.song-row-num{width:40px;flex-shrink:0;text-align:center;color:var(--text-muted);font-size:13px}
+.song-row.trash-row{cursor:default}
+.song-row .trash-btns{margin-left:8px}
+
+.lib-actions{display:flex;align-items:center;gap:16px;margin:4px 0 16px;flex-wrap:wrap}
+.lib-actions .count{color:var(--text-muted);font-size:13px}
+.sec-title{font-size:15px;font-weight:500;margin:24px 0 12px}
+.cards-grid.small{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:16px;margin-bottom:24px}
+.back-link{display:inline-flex;align-items:center;gap:4px;color:var(--text-muted);font-size:13px;cursor:pointer;margin-bottom:16px;padding:4px 8px 4px 0}
+.back-link:hover{color:var(--primary-orange)}
+.detail-link{display:inline-flex;align-items:center;gap:6px;color:var(--primary-orange);font-size:13px;cursor:pointer;margin:0 0 16px}
+.detail-link:hover{text-decoration:underline}
+
+.empty-state{text-align:center;padding:64px 24px;color:var(--text-muted)}
+.empty-state .material-icons{font-size:64px;color:#bdbdbd}
+.empty-state h3{font-size:18px;font-weight:400;color:var(--text-main);margin:12px 0 8px}
+.empty-state p{font-size:13px;max-width:360px;margin:0 auto 20px;line-height:1.6}
+
+.q-art{display:block;flex:0 0 auto;width:36px;height:36px;border-radius:2px;margin-right:12px;background:#e0e0e0 center/cover no-repeat}
+
+/* Add music: progress + results + storage */
+.imp-body{padding:16px 24px}
+.imp-line{display:flex;justify-content:space-between;gap:16px;font-size:13px;margin-bottom:10px}
+.imp-name{color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.progress-line{height:6px;background:#eee;border-radius:3px;overflow:hidden;margin-bottom:12px}
+.progress-line>div{height:100%;background:var(--primary-orange);transition:width .2s}
+.imp-list{list-style:none;margin:0;padding:0;font-size:13px}
+.imp-list li{display:flex;align-items:flex-start;gap:10px;padding:6px 0;line-height:1.4}
+.imp-list li .material-icons{font-size:20px;flex-shrink:0}
+.imp-list li.ok .material-icons{color:#43a047}
+.imp-list li.info .material-icons{color:#757575}
+.imp-list li.bad .material-icons{color:#e53935}
+.imp-list li span{min-width:0;word-break:break-word}
+@media (max-width:768px){.imp-body{padding:14px 16px}.empty-state{padding:48px 16px}.cards-grid.small{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}}
+
+/* phone: the tab bar gets the whole row; the sort button sits under it on the right */
+.tabs{scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+@media (max-width:768px){
+  .lib-bar{gap:0}
+  .tabs{flex:1 1 100%}
+  .tab{padding:12px 14px}
+  .sort-btn{margin-left:auto;padding:6px 8px}
+}

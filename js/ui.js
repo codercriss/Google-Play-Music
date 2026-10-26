@@ -64,6 +64,7 @@
         main.addEventListener('scroll', closePop);
         var item = function (ic, t, toastTxt, extra) { return '<div class="pop-item" ' + (toastTxt ? 'data-toast="' + toastTxt + '"' : '') + (extra || '') + '>' + icon(ic) + t + '</div>'; };
         var opt = function (t, sel) { return '<div class="pop-item' + (sel ? ' sel' : '') + '">' + t + icon('check', '') .replace('<i ', '<i class="chk" ').replace('class="chk" class="material-icons"', 'class="material-icons chk"') + '</div>'; };
+        window.AppUI = { openPop: openPop, closePop: closePop, item: item, opt: opt, icon: icon };   // used by library-ui.js
 
         /* ---------- Header dropdowns ---------- */
         var acts = $$('.header-actions > *');
@@ -91,31 +92,6 @@
         $$('.sidebar-item, .sidebar-subitem').forEach(function (el) { var k = el.textContent.trim().replace(/^\w+_?\w*\s+(?=[A-Z])/, ''); for (var n in MAP) if (el.textContent.trim().slice(-n.length) === n) k = n; if (MAP[k]) { wire(el, MAP[k]); } });
         $$('.mobile-bottom-nav .nav-item').forEach(function (el) { var t = $('span', el).textContent.trim(); if (t === 'Mixes') wire(el, 'mixes'); if (t === 'Shop') wire(el, 'shop'); });
 
-        /* ---------- Library tabs + sort ---------- */
-        var lib = $('#view-library'), first = $('.song-list-header', lib);
-        var wrap = document.createElement('div'); wrap.id = 'lib-songs';
-        lib.insertBefore(wrap, first); while (wrap.nextSibling) wrap.appendChild(wrap.nextSibling);
-        lib.insertAdjacentHTML('afterbegin', '<div class="lib-bar"><div class="tabs">' + ['Playlists','Artists','Albums','Songs','Genres'].map(function (t) { return '<div class="tab' + (t === 'Songs' ? ' active' : '') + '">' + t + '</div>'; }).join('') + '</div><div class="sort-btn" id="sort-btn"><span>Recently added</span>' + icon('arrow_drop_down') + '</div></div><div class="cards-grid" id="lib-grid" style="display:none"></div>');
-        var GRIDS = {
-            Playlists: function () { return ['Pretty Music','Raine','sync','Thumbs up','Gym mix','Road trip'].map(function (n, i) { return card(i, 'queue_music', n, (i + 3) + ' songs'); }).join(''); },
-            Artists: function () { return ['Daft Punk','FKA twigs','ILLENIUM','Big Gigantic','Tove Lo','Hippie Sabotage','LUZCID','Ruxell'].map(function (n, i) { return card(i, 'person', n, (i + 2) + ' songs', '', 'artist'); }).join(''); },
-            Albums: function () { return [['Discovery','Daft Punk'],['Homework','Daft Punk'],['LP1','FKA twigs'],['The Night Is Young','Big Gigantic'],['Ash & Ember','ILLENIUM'],['Lady Wood','Tove Lo']].map(function (a, i) { return card(i, 'album', a[0], a[1]); }).join(''); },
-            Genres: function () { return ['Electronic','Dance','Pop','Hip-hop','Chill','Rock','Afrobeats','Jazz'].map(function (n, i) { return card(i, 'graphic_eq', n, (i * 4 + 6) + ' songs'); }).join(''); }
-        };
-        $$('.tab', lib).forEach(function (t) {
-            t.onclick = function () {
-                $$('.tab', lib).forEach(function (x) { x.classList.toggle('active', x === t); });
-                var g = $('#lib-grid'), songs = t.textContent === 'Songs';
-                wrap.style.display = songs ? '' : 'none'; g.style.display = songs ? 'none' : '';
-                if (!songs) g.innerHTML = GRIDS[t.textContent]();
-                $('#sort-btn').style.visibility = (songs || t.textContent === 'Albums') ? '' : 'hidden';
-            };
-        });
-        $('#sort-btn').onclick = function () {
-            var b = this;
-            openPop(b, '<div data-single="1">' + ['Recently added','A to Z','Most played','Duration'].map(function (s, i) { return opt(s, i === 0); }).join('') + '</div>', { pick: function (it) { $('span', b).textContent = it.textContent.replace('check', '').trim(); } });
-        };
-
         /* ---------- Row context menu ---------- */
         function addKebabs(root) {
             $$('.song-row', root).forEach(function (r) {
@@ -129,7 +105,6 @@
                 };
             });
         }
-        addKebabs(lib);
 
         /* ---------- New views ---------- */
         view('mixes', head('Instant mixes', 'Pick a mood or start from any song') + chips(['All', 'Energize', 'Chill', 'Focus', 'Party', 'Workout']) +
@@ -152,13 +127,10 @@
             '<div class="panel"><h3>Devices</h3><div class="set-row"><div>This browser<small>Active now</small></div><span style="color:var(--text-muted);font-size:12px">Current</span></div><div class="set-row"><div>Pixel phone<small>Last used 2 days ago</small></div><button class="btn-ghost" data-toast="Device removed">Remove</button></div></div>' +
             '<div class="panel"><h3>Language</h3><div class="set-row"><div>Display language</div><select><option>English</option><option>Français</option><option>Español</option><option>Twi</option></select></div></div>');
 
-        view('add', '<div class="drop" id="add-drop">' + icon('library_add') + '<h3>Add songs to play</h3><p>MP3, M4A, AAC, WAV, FLAC and more. On a computer you can also drag files into this window.</p><button class="btn-solid" id="add-pick">Choose songs</button><input type="file" id="add-input" accept="audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg,.opus" multiple hidden><p class="note">For now, songs stay only until you close the app. Saving them is coming in the next update.</p></div>' +
-            '<div class="panel"><h3>Your queue</h3><div id="add-session"></div></div>');
-
-        view('trash', head('Trash', 'Songs are deleted forever after 30 days') + '<div style="display:flex;justify-content:flex-end;margin:-8px 0 8px"><button class="btn-ghost" data-toast="Trash emptied">Empty trash</button></div>' + listHead.replace(/<div class="song-col-plays">.*?<\/div><\/div>$/, '</div>') + '<div>' + rows(3, 1) + '</div>');
+        view('add', ''); view('trash', ''); view('detail', ''); view('search', '');   // filled in by library-ui.js
 
         view('help', '<div class="panel"><h3>How can we help?</h3><div style="padding:16px 24px"><input class="field" placeholder="Describe your issue"></div></div>' +
-            '<div class="panel"><h3>Popular questions</h3>' + [['How do I add my own music?', 'Open Add music from the menu and choose songs from your phone or computer. For now they stay only until you close the app; saving them is coming in the next update.'], ['Are there keyboard shortcuts?', 'On a computer: Space plays or pauses, the left and right arrows jump 5 seconds, Shift with an arrow skips to the previous or next song, and M mutes.'], ['How do I make a playlist?', 'Tap the plus next to Playlists, name it, and add songs from any song menu.'], ['Can I listen offline?', 'The app opens offline once you have visited it online. Saving your songs on the device for offline listening is coming in the next update.'], ['How do I restore a deleted song?', 'Open Trash from the menu and choose Restore. Songs stay there for 30 days.']].map(function (q) { return '<details><summary>' + q[0] + '</summary><p>' + q[1] + '</p></details>'; }).join('') + '</div>' +
+            '<div class="panel"><h3>Popular questions</h3>' + [['How do I add my own music?', 'Open Add music from the menu and choose songs from your phone or computer. They are saved on this device, so they are still here when you come back and can play with no internet.'], ['Are there keyboard shortcuts?', 'On a computer: Space plays or pauses, the left and right arrows jump 5 seconds, Shift with an arrow skips to the previous or next song, and M mutes.'], ['How do I make a playlist?', 'Tap the plus next to Playlists, name it, and add songs from any song menu.'], ['Can I listen offline?', 'Yes. The app opens offline once you have visited it online, and the songs you add are stored on your device, so they play with no connection.'], ['How do I restore a deleted song?', 'Open Trash from the menu and choose Restore. Songs stay there for 30 days.']].map(function (q) { return '<details><summary>' + q[0] + '</summary><p>' + q[1] + '</p></details>'; }).join('') + '</div>' +
             '<div class="panel"><h3>Send feedback</h3><div style="padding:16px 24px;display:flex;flex-direction:column;gap:12px"><select><option>Suggestion</option><option>Something is broken</option><option>Other</option></select><textarea class="field" rows="4" placeholder="Tell us what happened"></textarea><div><button class="btn-solid" data-toast="Feedback sent">Send feedback</button></div></div></div>');
 
         /* extra sections on Listen Now */
@@ -168,7 +140,7 @@
         while (extra.firstChild) ln.insertBefore(extra.firstChild, ln.lastElementChild);
 
         /* ---------- Wrap showView for the new views ---------- */
-        Object.assign(VIEW_TITLES, { mixes: 'Instant Mixes', shop: 'Shop', settings: 'Settings', add: 'Add music', trash: 'Trash', help: 'Help & Feedback' });
+        Object.assign(VIEW_TITLES, { mixes: 'Instant Mixes', shop: 'Shop', settings: 'Settings', add: 'Add music', trash: 'Trash', help: 'Help & Feedback', search: 'Search', detail: 'My Library' });
         var baseShow = showView;
         showView = function (v) {
             baseShow(v);

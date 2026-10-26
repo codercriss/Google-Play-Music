@@ -8,8 +8,8 @@ Status key: ⬜ not started · 🟨 in progress · ✅ done
 | --- | --- | --- |
 | 0 | Baseline and docs | ✅ |
 | 1 | Ship-ready shell: Vercel, PWA, offline, iPhone safe areas | ✅ |
-| 2 | Real playback engine | 🟨 built; waiting on your iPhone check |
-| 3 | Your library: import, store, browse | ⬜ |
+| 2 | Real playback engine | ✅ |
+| 3 | Your library: import, store, browse | 🟨 built; waiting on your iPhone check |
 | 4 | Playlists, queue and mixes | ⬜ |
 | 5 | Reliability and polish | ⬜ |
 | 6 | Maybe later: accounts and sync | ⬜ |
@@ -98,11 +98,11 @@ Whether the full-height workaround takes effect depends on the iOS version, and 
 - **iOS 26 bottom strip.** An open WebKit bug can leave a strip at the bottom of an installed app that no page element can reach. We work around it as far as is possible; a guaranteed fix would need a solid (non-see-through) status bar, which gives up the orange strip at the top. That is an option if the workaround isn't enough.
 - **Real iPhone only.** I couldn't run Safari itself here, so iOS-specific behaviour (status bar colour, the exact insets) is checked by measurement, not by eye on a device.
 
-## Phase 2: Real playback engine 🟨
+## Phase 2: Real playback engine ✅
 
 **Goal:** the player bar actually plays audio.
 
-**Status:** all code is written and tested in a desktop browser with real audio files. It is not finished until you run `docs/testing-playback.md` on a real iPhone, especially the lock-screen and background parts, which can only be checked on a device.
+**Status:** done. Built and tested in a desktop browser with real audio files, then confirmed on a real iPhone: songs added from the Files app played, the queue and full-screen player worked, and the lock screen showed the song, artist, scrubber and controls (your screenshots).
 
 ### What was built
 
@@ -138,39 +138,74 @@ Whether the full-height workaround takes effect depends on the iOS version, and 
 - [x] Offline: with the network off the app opens and a song can be added and played.
 - [x] All Phase 1 checks (safe areas, offline, iOS 26 strip logic) still pass.
 
-### Still to check (needs you, on a real iPhone)
+### Checked on a real iPhone
 
-- [ ] Add songs from the Files app and play them (does iOS start the first one itself, or ask for a tap?).
-- [ ] Lock the phone: music continues, the lock screen shows title, artist and icon, and its buttons work.
-- [ ] Switch to another app: music continues.
-- [ ] Dragging the full-screen progress bar with a finger feels right.
-- [ ] Song lengths appear in the queue (on iPhone they may stay as a dash until played).
-- [ ] Phone call / interruption leaves the app showing paused.
+- [x] Add songs from the Files app and play them (does iOS start the first one itself, or ask for a tap?).
+- [x] Lock the phone: music continues, the lock screen shows title, artist and icon, and its buttons work.
+- [x] Switch to another app: music continues.
+- [x] Dragging the full-screen progress bar with a finger feels right.
+- [x] Song lengths appear in the queue (on iPhone they may stay as a dash until played).
+- [x] Phone call / interruption leaves the app showing paused.
 
 ### Known limits
 
-- **Songs vanish when you close the app.** They live in memory until Phase 3 saves them.
-- **No tags or artwork yet:** names come from the file name and covers are generated colours. Phase 3.
 - **Formats depend on the device.** iPhone normally plays MP3, M4A/AAC, WAV and FLAC, but I haven't confirmed every format on a device; a file the phone can't decode shows "can't play" and is skipped. `.ogg` files are the most likely to fail on iPhone (they work on most computers).
 - **Dragging in a very long queue** can't auto-scroll while you drag.
 - **The Library, playlists, thumbs and song menus are still sample content.** Phases 3 and 4.
 
-## Phase 3: Your library
+## Phase 3: Your library 🟨
 
 **Goal:** the library is your real music, saved on the device.
 
-- Storage in IndexedDB: audio files as blobs, track info in a separate store.
-- Add music via the file picker (works on iPhone) and drag-and-drop (desktop).
-- Read tags (title, artist, album, genre, track number, duration) and embedded artwork from the files. Fall back to the filename when tags are missing.
-- Ask the browser for persistent storage and show how much space the library uses.
-- Songs, Artists, Albums and Genres tabs built from real data, with working sort.
-- Search box works.
-- Play counts are recorded for real.
-- Remove sends a song to Trash; Restore and Delete forever work.
+**Status:** all code is written and tested in a desktop browser with real files and under failure conditions. It is not finished until you run `docs/testing-library.md` on a real iPhone. Four things only a device can confirm: how fast iOS saves a big batch, whether a tapped song starts instantly, what happens at the end of a song while the phone is locked, and whether the library survives closing the app.
 
-**Done when:** add 20+ songs, close the app, reopen offline, and everything is still there and playable.
+### What was built
 
-**Risk:** iOS storage limits and eviction rules. We request persistent storage and test with a large library.
+- **On-device database** (`js/store.js`, IndexedDB): songs' info, the audio files and the cover images are kept in three separate tables, so listing songs never loads audio. Everything survives closing the app and works offline.
+- **Tag reader** (`js/tags.js`): title, artist, album, album artist, genre, year, track and disc number, and the cover art, read from MP3 (ID3v2.2/2.3/2.4 and ID3v1), M4A, FLAC, WAV and Ogg (text only). Tested against ffprobe. Damaged files can't crash it.
+- **Library** (`js/library.js`): import with a "does it really play on this device" check, duplicate detection, cover re-sizing, grouping into artists / albums / genres, sorting, accent-insensitive search, trash with 30-day expiry, real play counts, and storage numbers.
+- **Screens** (`js/library-ui.js`): Songs, Artists, Albums and Genres tabs with sorting; album, artist and genre pages with Play and Shuffle; search results; the Trash (Restore, Delete, Empty trash, with confirmation); the Add music screen with live import progress, a results summary and a storage panel with a Protect button.
+- **Player changes:** the player now plays songs from the library (`Player.setQueue` / `addTracks`). A silent unlock inside the first tap and next-song pre-loading keep iOS from refusing audio that has to be read from the database first. Real covers appear in the mini player, the full-screen player, the queue and the lock screen.
+- **Song menu:** Play next, Add to queue, Go to artist, Go to album and Remove from library all work.
+- **Fix found while building:** the tab bar was being squeezed on phones; it now gets its own row.
+
+### Where this differs from the original plan
+
+| Plan said | What I did | Why |
+| --- | --- | --- |
+| "Play next / Add to queue / Go to artist / Go to album" in Phase 4 | Done now | A library with no way to queue a song would feel broken, and the pieces were already there |
+| Playlists tab | Shows a "coming next" note | Playlists are Phase 4 |
+| Read tags from every format | Ogg files: text tags only, no artwork | Ogg artwork is stored in a way that is easy to get wrong; and iPhone can't play Ogg anyway |
+| Files iPhone can't play | Refused at import, with a reason | Better than a library full of songs that can't play |
+| "Listen Now: Recent activity" is Phase 4 | Unchanged | Still sample content until Phase 4 |
+
+### Checked here (desktop browser, real files)
+
+- [x] **Tag reader** (28 checks, Node, against ffprobe): every field and the cover from MP3 v2.3 (UTF-16 text, accents and Japanese), v2.4, ID3v1, M4A, FLAC, WAV and Ogg; junk, empty, cut-off and fake files return empty fields without crashing; file-name clean-up.
+- [x] **Data layer** (29 checks, real browser database): import, covers re-sized to 512 px, grouping, accent-insensitive search, duplicate detection, trash / restore / purge, storage numbers, and **everything intact after a reload**.
+- [x] **Screens** (68 checks): import 27 songs through the real file chooser; every tab and sort; album, artist and genre pages; Play, Shuffle all; tapping a row queues the whole sorted list; play counts counted only for songs really listened to; the song menu; search (including Escape and navigating away); Trash with confirmations; re-adding the same files adds nothing; reload; **offline reload, then playing from the database**.
+- [x] **Phone layout** (17 checks, touch): every library screen fits the screen with no sideways overflow, album cards in two columns, the song menu stays on screen, the queue opens above the full-screen player.
+- [x] **Stress and failure** (20 checks): with a 2,500-song library the database is read in about 25 ms, the Songs tab then opens in about 12 ms (drawing the first 120 rows), and queueing all 2,500 songs builds the queue panel in under 100 ms; a full disk keeps what was saved and says so; a browser that refuses a file-backed blob is retried with a copy; a browser with no storage explains instead of crashing; a song whose audio vanished is flagged and skipped; trashing queued songs removes them from the queue.
+- [x] **iOS audio rule, modelled** (6 checks): with iOS's "needs a tap" rule simulated, tapping a library song starts it, the next song follows by itself, and tapping another song works. With my unlock deliberately removed the same tap fails, so the test genuinely detects the problem. This is a model, not iOS itself.
+- [x] **Everything from Phase 1 and 2 still passes** through the new library flow (safe areas 20, iOS 26 strip 20, offline and updates 16, fonts 10, playback 56 on desktop and 24 on phone, queue and shuffle edge cases 17).
+
+### Still to check (needs you, on a real iPhone)
+
+- [ ] Add 20+ songs from the Files app; note how long it takes.
+- [ ] The first tap on a song after opening the app starts it at once (no "Tap play to start").
+- [ ] A song ends **while the phone is locked** and the next one starts by itself.
+- [ ] Lock-screen artwork is the album cover.
+- [ ] Close the app, reopen: the library is there. Airplane mode, reopen: it is there and plays.
+- [ ] The storage panel reports "Protected" or "Not protected yet" (and what **Protect** says).
+
+### Known limits
+
+- **No backup.** The library lives only on this device. Deleting the Home Screen app, or clearing the site's data, deletes it. A backup and restore is planned for Phase 5.
+- **Importing needs the app open**, and goes one file at a time. If iOS suspends it, what was saved is kept; adding again skips duplicates.
+- **Artwork needs to be inside the file** (embedded), as with most store-bought and ripped music. A separate `cover.jpg` in the same folder isn't picked up.
+- **Song names for tag-less files come from the file name**, tidied but not perfect.
+- **The song menu's "Add to playlist" is a placeholder** until Phase 4.
+- **Listen Now, Instant Mixes, Shop, Settings and the sidebar playlists are still sample content.**
 
 ---
 
@@ -178,12 +213,10 @@ Whether the full-height workaround takes effect depends on the iOS version, and 
 
 - Create, rename and delete playlists. Add songs from the song menu. Reorder.
 - Thumbs up and thumbs down saved; "Thumbs up" and "Last added" auto playlists driven by real data.
-- "Play next" and "Add to queue" from the song menu.
 - Instant mix and "I'm feeling lucky" built from your own library (by artist, genre or random).
-- Go to artist / Go to album from the song menu.
 - Listen Now: "Recent activity" from real play history.
 
-**Done when:** every item in the song menu does something real.
+**Done when:** every item in the song menu does something real, and no sample playlist or Listen Now content remains.
 
 ---
 
