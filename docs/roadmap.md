@@ -157,7 +157,7 @@ Whether the full-height workaround takes effect depends on the iOS version, and 
 
 **Goal:** the library is your real music, saved on the device.
 
-**Status:** all code is written and tested in a desktop browser with real files and under failure conditions. It is not finished until you run `docs/testing-library.md` on a real iPhone. Four things only a device can confirm: how fast iOS saves a big batch, whether a tapped song starts instantly, what happens at the end of a song while the phone is locked, and whether the library survives closing the app.
+**Status:** built, and tried on a real iPhone: adding songs, the library, playback, the queue and lock-screen cover art all worked (your screenshots). The trial turned up three things, fixed below as "fix round 1". Still to confirm on the phone: the items under "Still to check".
 
 ### What was built
 
@@ -168,6 +168,15 @@ Whether the full-height workaround takes effect depends on the iOS version, and 
 - **Player changes:** the player now plays songs from the library (`Player.setQueue` / `addTracks`). A silent unlock inside the first tap and next-song pre-loading keep iOS from refusing audio that has to be read from the database first. Real covers appear in the mini player, the full-screen player, the queue and the lock screen.
 - **Song menu:** Play next, Add to queue, Go to artist, Go to album and Remove from library all work.
 - **Fix found while building:** the tab bar was being squeezed on phones; it now gets its own row.
+
+### Fix round 1 (after the first iPhone trial)
+
+You reported that songs with no cover picture were different colours in different places and plain grey in the queue, and asked for the phone queue to be redesigned. Looking at your screenshots I also saw website promo in many names. Done:
+
+- **One colour rule.** The library and the players each picked a placeholder colour their own way, and the queue didn't use one. Now a single rule in `library.js` decides: a song with an album is coloured by artist + album (so an album's songs match, as real covers would); a song with no album by title + artist. Library rows, album cards, the album page, the mini player, the full-screen player and the queue all use it, and queue rows without a picture show a music note.
+- **Phone queue redesigned as a bottom sheet:** slides up with a dimmed backdrop; big title with song count and total time; 64 px rows with a 48 px cover and the drag handle on the right; the playing song highlighted with moving equaliser bars and earlier songs faded; swipe a song left to remove it; drag the handle to reorder; a "Now playing" pill when the playing song is scrolled away; close by tapping outside, the close button, or dragging the top edge down; a one-time hint. The computer's panel keeps its layout.
+- **Names tidied:** `|| TrendyBeatz.com`, `| val9ja.com`, a trailing dash (`Oxlade –` is now `Oxlade`, the artist is untouched), web addresses in brackets, and albums that are just a website or a social handle (`IG: @Cee_Naija`). Songs you already added are tidied once, and the original text is kept for every song, so this can be undone. Duplicate detection still uses the original text, so re-adding a file you already have is still caught.
+- **Faster taps in a big library:** the queue's rows are built only when the queue is opened. Tapping a song in a 2,500-song list used to spend about 245 ms building a panel nobody could see before the music started; it now costs about 7 ms.
 
 ### Where this differs from the original plan
 
@@ -185,22 +194,27 @@ Whether the full-height workaround takes effect depends on the iOS version, and 
 - [x] **Data layer** (29 checks, real browser database): import, covers re-sized to 512 px, grouping, accent-insensitive search, duplicate detection, trash / restore / purge, storage numbers, and **everything intact after a reload**.
 - [x] **Screens** (68 checks): import 27 songs through the real file chooser; every tab and sort; album, artist and genre pages; Play, Shuffle all; tapping a row queues the whole sorted list; play counts counted only for songs really listened to; the song menu; search (including Escape and navigating away); Trash with confirmations; re-adding the same files adds nothing; reload; **offline reload, then playing from the database**.
 - [x] **Phone layout** (17 checks, touch): every library screen fits the screen with no sideways overflow, album cards in two columns, the song menu stays on screen, the queue opens above the full-screen player.
-- [x] **Stress and failure** (20 checks): with a 2,500-song library the database is read in about 25 ms, the Songs tab then opens in about 12 ms (drawing the first 120 rows), and queueing all 2,500 songs builds the queue panel in under 100 ms; a full disk keeps what was saved and says so; a browser that refuses a file-backed blob is retried with a copy; a browser with no storage explains instead of crashing; a song whose audio vanished is flagged and skipped; trashing queued songs removes them from the queue.
+- [x] **Stress and failure** (21 checks): with a 2,500-song library the database is read in about 25 ms, the Songs tab then opens in about 12 ms (drawing the first 120 rows), and queueing all 2,500 songs takes about 7 ms (the rows are built when the queue is opened, which takes roughly half a second to a second at that size); a full disk keeps what was saved and says so; a browser that refuses a file-backed blob is retried with a copy; a browser with no storage explains instead of crashing; a song whose audio vanished is flagged and skipped; trashing queued songs removes them from the queue.
 - [x] **iOS audio rule, modelled** (6 checks): with iOS's "needs a tap" rule simulated, tapping a library song starts it, the next song follows by itself, and tapping another song works. With my unlock deliberately removed the same tap fails, so the test genuinely detects the problem. This is a model, not iOS itself.
-- [x] **Everything from Phase 1 and 2 still passes** through the new library flow (safe areas 20, iOS 26 strip 20, offline and updates 16, fonts 10, playback 56 on desktop and 24 on phone, queue and shuffle edge cases 17).
+- [x] **Fix round 1** (106 new checks): the same song or album is the identical colour in the library row, album card, album page, mini player, full-screen header, full-screen art and queue (43 checks, which also cover the whole phone queue with real touch gestures: sheet position and corners, backdrop, equaliser, the Now playing pill, swipe to remove, a short swipe that doesn't remove or start a song, handle drag, three ways to close; and the unchanged desktop panel). The name tidy-up is tested on 45 strings, including the exact ones from your screenshots, a list of real names it must leave alone, and running it twice. The migration of an older library is tested end to end (18 checks): promo and dashes removed, a clean song untouched, trashed songs tidied, originals kept, saved across a reload, run once, and **a file the old version saved is still recognised as a duplicate**.
+- [x] **Everything from Phase 1 and 2 still passes** through the new library flow (safe areas 21, iOS 26 strip 20, offline and updates 16, fonts 10, playback 56 on desktop and 24 on phone, queue and shuffle edge cases 17).
 
 ### Still to check (needs you, on a real iPhone)
 
-- [ ] Add 20+ songs from the Files app; note how long it takes.
-- [ ] The first tap on a song after opening the app starts it at once (no "Tap play to start").
+- [x] Add 20+ songs from the Files app (34 songs added, with covers; how long it took wasn't reported).
+- [x] The first tap on a song after opening the app starts it at once (no "Tap play to start").
 - [ ] A song ends **while the phone is locked** and the next one starts by itself.
-- [ ] Lock-screen artwork is the album cover.
+- [ ] The redesigned phone queue (new section C2 in `docs/testing-library.md`): sheet, swipe to remove, handle drag, Now playing pill.
+- [ ] Songs with no cover picture look the same colour in the list, both players and the queue.
+- [x] Lock-screen artwork is the album cover (your lock-screen screenshot).
 - [ ] Close the app, reopen: the library is there. Airplane mode, reopen: it is there and plays.
 - [ ] The storage panel reports "Protected" or "Not protected yet" (and what **Protect** says).
 
 ### Known limits
 
 - **No backup.** The library lives only on this device. Deleting the Home Screen app, or clearing the site's data, deletes it. A backup and restore is planned for Phase 5.
+- **Opening the queue with thousands of songs queued takes a moment** (roughly half a second to a second for 2,500 on a computer, more on a phone). Normal queues open instantly.
+- **The name tidy-up can't catch every kind of promo text,** only the patterns above. There is no way to edit a name yet; the originals are kept.
 - **Importing needs the app open**, and goes one file at a time. If iOS suspends it, what was saved is kept; adding again skips duplicates.
 - **Artwork needs to be inside the file** (embedded), as with most store-bought and ripped music. A separate `cover.jpg` in the same folder isn't picked up.
 - **Song names for tag-less files come from the file name**, tidied but not perfect.

@@ -42,10 +42,6 @@
         if (n < 1073741824) return (n / 1048576).toFixed(n < 104857600 ? 1 : 0) + ' MB';
         return (n / 1073741824).toFixed(2) + ' GB';
     }
-    function hash(s) { var h = 0; s = String(s); for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
-    var PAL = [['#ef6c00', '#ffb74d'], ['#5e35b1', '#9575cd'], ['#00897b', '#4db6ac'], ['#d81b60', '#f48fb1'],
-               ['#1e88e5', '#64b5f6'], ['#43a047', '#a5d6a7'], ['#546e7a', '#b0bec5'], ['#f4511e', '#ffab91']];
-    function grad(seed) { var p = PAL[hash(seed) % PAL.length]; return 'linear-gradient(135deg,' + p[0] + ',' + p[1] + ')'; }
     function setTitle(t) { var h = document.getElementById('header-title'); if (h) h.textContent = t; }
 
 
@@ -90,7 +86,7 @@
     function songRow(t, o) {
         o = o || {};
         var lead = o.num ? '<div class="song-row-num">' + (t.track || o.num) + '</div>'
-            : '<div class="song-row-art" data-cover="' + esc(t.coverKey) + '" style="background:' + grad(t.title + t.artist) + '">' + icon('music_note', 'color:#fff;font-size:20px') + '</div>';
+            : '<div class="song-row-art" data-cover="' + esc(t.coverKey) + '" style="background:' + L.placeholder(L.seedOf(t)) + '">' + icon('music_note', 'color:#fff;font-size:20px') + '</div>';
         var sub = o.num ? esc(t.artist) : esc(t.artist) + (t.album ? ' \u2013 ' + esc(t.album) : '');
         var right;
         if (o.trash) {
@@ -106,17 +102,17 @@
     }
 
     function albumCard(a) {
-        return '<div class="card" data-album="' + esc(a.key) + '"><div class="card-image" data-cover="' + esc(a.coverKey) + '" style="background:' + grad(a.album + a.artist) + ';display:flex;align-items:center;justify-content:center">' +
+        return '<div class="card" data-album="' + esc(a.key) + '"><div class="card-image" data-cover="' + esc(a.coverKey) + '" style="background:' + L.placeholder(a.key) + ';display:flex;align-items:center;justify-content:center">' +
             icon('album', 'font-size:52px;color:rgba(255,255,255,.85)') + '</div><div class="card-info"><div class="card-title">' + esc(a.album) +
             '</div><div class="card-subtitle">' + esc(a.artist) + (a.year ? ' \u00b7 ' + a.year : '') + '</div></div></div>';
     }
     function artistCard(a) {
-        return '<div class="card artist" data-artist="' + esc(a.key) + '"><div class="card-image" data-cover="' + esc(a.coverKey) + '" style="background:' + grad(a.name) + ';display:flex;align-items:center;justify-content:center">' +
+        return '<div class="card artist" data-artist="' + esc(a.key) + '"><div class="card-image" data-cover="' + esc(a.coverKey) + '" style="background:' + L.placeholder('a|' + a.key) + ';display:flex;align-items:center;justify-content:center">' +
             icon('person', 'font-size:52px;color:rgba(255,255,255,.85)') + '</div><div class="card-info"><div class="card-title">' + esc(a.name) +
             '</div><div class="card-subtitle">' + plural(a.songs.length, 'song') + '</div></div></div>';
     }
     function genreCard(g) {
-        return '<div class="card" data-genre="' + esc(g.key) + '"><div class="card-image" data-cover="' + esc(g.coverKey) + '" style="background:' + grad(g.name) + ';display:flex;align-items:center;justify-content:center">' +
+        return '<div class="card" data-genre="' + esc(g.key) + '"><div class="card-image" data-cover="' + esc(g.coverKey) + '" style="background:' + L.placeholder('g|' + g.key) + ';display:flex;align-items:center;justify-content:center">' +
             icon('graphic_eq', 'font-size:52px;color:rgba(255,255,255,.85)') + '</div><div class="card-info"><div class="card-title">' + esc(g.name) +
             '</div><div class="card-subtitle">' + plural(g.songs.length, 'song') + '</div></div></div>';
     }
@@ -234,7 +230,7 @@
 
     var detailRef = null;
     function heroArt(coverKey, seed, ic) {
-        return '<div class="pl-art" data-cover="' + esc(coverKey) + '" style="background:' + grad(seed) + '">' + icon(ic) + '</div>';
+        return '<div class="pl-art" data-cover="' + esc(coverKey) + '" style="background:' + L.placeholder(seed) + '">' + icon(ic) + '</div>';
     }
 
     function renderDetail() {
@@ -246,20 +242,20 @@
             d = L.findAlbum(detailRef.key); if (!d) { goBack(); return; }
             songs = d.songs; title = d.album;
             sub = esc(d.artist) + (d.year ? ' \u00b7 ' + d.year : '') + ' \u00b7 ' + plural(songs.length, 'song') + ' \u00b7 ' + longDur(songs.reduce(function (s, t) { return s + (t.duration || 0); }, 0));
-            art = heroArt(d.coverKey, d.album + d.artist, 'album');
+            art = heroArt(d.coverKey, d.key, 'album');
             extra = '<div class="detail-link" data-artist-link="' + esc(L.artistKeyOf(songs[0])) + '">' + icon('person', 'font-size:16px') + 'More from ' + esc(d.artist) + '</div>';
         } else if (detailRef.kind === 'artist') {
             d = L.findArtist(detailRef.key); if (!d) { goBack(); return; }
             songs = d.songs; title = d.name;
             var albums = L.albumsOf(d);
             sub = plural(albums.length, 'album') + ' \u00b7 ' + plural(songs.length, 'song');
-            art = heroArt(d.coverKey, d.name, 'person');
+            art = heroArt(d.coverKey, 'a|' + d.key, 'person');
             extra = '<h3 class="sec-title">Albums</h3><div class="cards-grid">' + albums.map(albumCard).join('') + '</div><h3 class="sec-title">Songs</h3>';
         } else {
             d = L.findGenre(detailRef.key); if (!d) { goBack(); return; }
             songs = d.songs; title = d.name;
             sub = plural(songs.length, 'song');
-            art = heroArt(d.coverKey, d.name, 'graphic_eq');
+            art = heroArt(d.coverKey, 'g|' + d.key, 'graphic_eq');
         }
         var cid = makeCtx(songs);
         box.innerHTML = '<div class="back-link" data-act="back">' + icon('arrow_back', 'font-size:18px') + 'My Library</div>' +

@@ -25,6 +25,8 @@ The data layer, the screens and every failure case were tested in a desktop brow
 - [ ] **Artists** tab: one card per artist with a picture and a song count. **Albums** tab: one card per album with its cover. **Genres** tab: one card per genre.
 - [ ] Tap an album: its page opens with the cover, the songs in track order, and **Play** / **Shuffle**. Tap the artist link, then **My Library** to go back.
 - [ ] Scroll a long Songs list quickly: it should stay smooth and never show a blank gap for long.
+- [ ] **Names:** songs that used to show "|| TrendyBeatz.com" or "| val9ja.com" after the title now show just the title, and "Oxlade –" is now "Oxlade". Anything that still looks wrong: tell me exactly what it says.
+- [ ] **Colours:** pick a song that has no cover picture. Its colour square is **the same** in the Songs list, the mini player, the full-screen player and the queue. Two songs from the same album share a colour.
 
 ## C. Playing (the important part)
 
@@ -33,6 +35,17 @@ The data layer, the screens and every failure case were tested in a desktop brow
 - [ ] Tap a different song while one plays: it switches.
 - [ ] Let a short song finish: the next song **starts by itself**.
 - [ ] Tap **Play** on an album, and **Shuffle all** on Songs: both work.
+
+## C2. The queue (phone)
+
+- [ ] Open the full-screen player and tap the queue icon (top right). The queue **slides up as a sheet** with rounded corners; the page behind it is dimmed.
+- [ ] The title says "Queue" with the number of songs and total time. The playing song is highlighted, with little moving bars on its cover (still while paused). Songs already played are faded.
+- [ ] It opens scrolled to the playing song. Scroll far away: a **"Now playing" button** appears. Tap it: it takes you back.
+- [ ] Songs with no picture show a colour with a music note (not grey).
+- [ ] **Swipe a song to the left**: a red "Remove" appears and the song goes. A short swipe springs back and does **not** start the song.
+- [ ] **Hold the handle** on the right (three lines) and drag a song up or down to reorder it. The playing song keeps playing.
+- [ ] Close the queue three ways: tap the dimmed area above it, tap the round close button, or drag the top edge down.
+- [ ] **Clear** empties it.
 
 ## D. Lock screen and background
 

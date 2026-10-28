@@ -79,7 +79,7 @@
 
     function toItem(t) {
         return {
-            id: nextUid++, trackId: t.id, title: t.title, artist: t.artist, album: t.album || '',
+            id: nextUid++, trackId: t.id, title: t.title, artist: t.artist, albumArtist: t.albumArtist || '', album: t.album || '',
             coverKey: t.coverKey || '', duration: t.duration > 0 ? t.duration : NaN, failed: false
         };
     }

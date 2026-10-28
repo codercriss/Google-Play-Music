@@ -158,7 +158,11 @@
         /* ---------- Modal, queue, volume, cast, chips, toasts ---------- */
         document.body.insertAdjacentHTML('beforeend',
             '<div class="scrim" id="modal"><div class="modal"><h3>New playlist</h3><div class="body"><input class="field" placeholder="Name"><textarea class="field" rows="3" placeholder="Description (optional)"></textarea><select><option>Private</option><option>Public</option></select></div><div class="foot"><button class="btn-ghost" data-close="1">Cancel</button><button class="btn-solid" data-close="1" data-toast="Playlist created">Create playlist</button></div></div></div>' +
-            '<div class="queue" id="queue"><div class="pop-head">Queue<span><a id="q-clear">Clear</a> &nbsp; <a id="q-close">Close</a></span></div><div class="list"></div></div>' +
+            '<div class="queue" id="queue"><div class="q-grab"><span></span></div>' +
+            '<div class="pop-head"><div class="q-head-text"><b class="q-head-title">Queue</b><small class="q-head-sub"></small></div>' +
+            '<span class="q-head-actions"><a id="q-clear">Clear</a><a id="q-close" title="Close">' + icon('close') + '</a></span></div>' +
+            '<div class="q-hint">Drag ' + icon('drag_handle') + ' to reorder \u00b7 swipe a song left to remove it</div>' +
+            '<div class="list"></div><button class="q-now-pill" id="q-now" type="button">' + icon('arrow_downward') + 'Now playing</button></div>' +
             '<div class="toast" id="toast"></div>');
         var modal = $('#modal'), queue = $('#queue');
         modal.addEventListener('click', function (e) { if (e.target === modal || e.target.dataset.close) modal.classList.remove('open'); });

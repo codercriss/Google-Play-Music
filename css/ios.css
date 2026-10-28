@@ -164,7 +164,7 @@
       }
 
       /* Queue panel (full-screen on mobile) and toast */
-      .queue { top: calc(64px + var(--sat)); padding-bottom: var(--sab); }
+      .queue { top: calc(48px + var(--sat)); padding-bottom: var(--sab); }
       .toast { bottom: calc(150px + var(--sab)); }
     }
 

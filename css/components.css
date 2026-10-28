@@ -111,20 +111,9 @@
         .modal h3{font-size:18px;font-weight:400;padding:20px 24px 8px}
         .modal .body{padding:8px 24px;display:flex;flex-direction:column;gap:12px}
         .modal .foot{display:flex;justify-content:flex-end;gap:8px;padding:16px 24px}
-        .queue{position:fixed;right:0;bottom:90px;width:340px;max-height:65vh;background:#fff;box-shadow:0 -2px 14px rgba(0,0,0,.25);z-index:250;display:none;flex-direction:column}
-        .queue.open{display:flex}
-        .queue .pop-head{margin:0;flex-shrink:0}
-        .queue .list{overflow-y:auto}
-        .q-row{display:flex;align-items:center;gap:12px;padding:8px 16px;font-size:13px;cursor:pointer}
-        .q-row:hover{background:var(--sidebar-hover)}
-        .q-row.now{background:#fff3e0;color:var(--primary-orange);font-weight:500}
-        .q-row .material-icons{color:#9e9e9e;font-size:20px}
-        .q-row div{flex:1;min-width:0}
-        .q-row small{display:block;color:var(--text-muted);font-weight:400}
         .toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:#323232;color:#fff;font-size:13px;padding:10px 20px;border-radius:2px;z-index:1200;opacity:0;pointer-events:none;transition:opacity .2s}
         .toast.show{opacity:1}
         @media (max-width:768px){
-            .queue{width:auto;left:0;bottom:0;top:64px;max-height:none;z-index:520}
             .hero{padding:20px}.hero h2{font-size:20px}
             .pl-art{width:110px;height:110px}.pl-hero h1{font-size:22px}
             .set-row{padding:12px 16px}.up-row .name{width:100px}
@@ -145,21 +134,6 @@
 .fs-overlay-progress-bar::before{content:'';position:absolute;left:-8px;right:-8px;top:-18px;bottom:-18px}
 .fs-overlay-progress-current::after{width:14px;height:14px;right:-7px}
 
-/* queue rows */
-.q-row{user-select:none;-webkit-user-select:none}
-.q-row .q-main{flex:1;min-width:0}
-.q-row .q-title,.q-row small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.q-handle{display:flex;align-items:center;flex:0 0 auto;touch-action:none;cursor:grab;padding:8px 6px 8px 0;margin:-8px 0}
-.q-time{flex:0 0 auto;font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums}
-.q-x{display:flex;flex:0 0 auto;cursor:pointer;padding:6px;margin:-6px -6px -6px 0;border-radius:50%}
-.q-x:hover{background:rgba(0,0,0,.07)}
-.q-row.failed{opacity:.55}
-.q-row.failed .q-title{text-decoration:line-through}
-.q-row.shifting{transition:transform .15s ease}
-.q-row.dragging{position:relative;z-index:2;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.28);transition:none;cursor:grabbing}
-.q-empty{padding:32px 24px;text-align:center;color:var(--text-muted);font-size:13px;line-height:1.6}
-.q-empty .btn-solid{margin-top:12px}
-.queue .list{-webkit-overflow-scrolling:touch}
 
 /* Add music screen */
 .drop.over{border-color:var(--primary-orange);background:#fff8f0}
@@ -196,7 +170,6 @@
 .empty-state h3{font-size:18px;font-weight:400;color:var(--text-main);margin:12px 0 8px}
 .empty-state p{font-size:13px;max-width:360px;margin:0 auto 20px;line-height:1.6}
 
-.q-art{display:block;flex:0 0 auto;width:36px;height:36px;border-radius:2px;margin-right:12px;background:#e0e0e0 center/cover no-repeat}
 
 /* Add music: progress + results + storage */
 .imp-body{padding:16px 24px}
@@ -222,3 +195,98 @@
   .tab{padding:12px 14px}
   .sort-btn{margin-left:auto;padding:6px 8px}
 }
+
+/* ===== Queue panel =====
+   Desktop: a panel above the player bar. Phone: a bottom sheet (see the media query). */
+.queue{position:fixed;right:0;bottom:90px;width:340px;max-height:65vh;background:#fff;box-shadow:0 -2px 14px rgba(0,0,0,.25);z-index:250;display:none;flex-direction:column}
+.queue.open{display:flex}
+.queue .pop-head{margin:0;flex-shrink:0;padding:12px 16px 10px}
+.q-head-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.q-head-title{font-size:15px;font-weight:500}
+.q-head-sub{font-size:12px;color:var(--text-muted);font-weight:400;min-height:15px}
+.q-head-actions{display:flex;align-items:center;gap:14px}
+.q-head-actions a{cursor:pointer;display:inline-flex;align-items:center}
+.q-head-actions a .material-icons{font-size:22px;color:var(--text-muted)}
+.q-grab,.q-hint{display:none}
+.queue .list{overflow-y:auto;flex:1;min-height:0;-webkit-overflow-scrolling:touch}
+
+.q-row{position:relative;font-size:13px;cursor:pointer;user-select:none;-webkit-user-select:none}
+.q-in{position:relative;z-index:1;display:flex;align-items:center;gap:12px;padding:8px 16px;background:#fff;touch-action:pan-y}
+.q-row:hover .q-in{background:var(--sidebar-hover)}
+.q-row.now .q-in{background:#fff3e0}
+.q-row.now .q-title{color:var(--primary-orange);font-weight:500}
+.q-row.past:not(.now) .q-in{opacity:.6}
+.q-row.failed .q-in{opacity:.55}
+.q-row.failed .q-title{text-decoration:line-through}
+.q-main{flex:1;min-width:0}
+.q-title,.q-main small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q-main small{display:block;color:var(--text-muted);font-weight:400}
+.q-time{flex:0 0 auto;font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+.q-handle{order:-1;display:flex;align-items:center;flex:0 0 auto;touch-action:none;cursor:grab;padding:8px 6px 8px 0;margin:-8px 0}
+.q-x{display:flex;flex:0 0 auto;cursor:pointer;padding:6px;margin:-6px -6px -6px 0;border-radius:50%}
+.q-x:hover{background:rgba(0,0,0,.07)}
+.q-handle .material-icons,.q-x .material-icons{color:#9e9e9e;font-size:20px}
+
+/* cover: the picture, or a colour with a note (same colour as everywhere else); the playing song gets bars on top */
+.q-art{position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 auto;width:36px;height:36px;border-radius:3px;overflow:hidden;background:#e0e0e0 center/cover no-repeat}
+.q-art>.material-icons{color:#fff;font-size:20px}
+.q-eq{position:absolute;inset:0;display:none;align-items:flex-end;justify-content:center;gap:3px;padding-bottom:28%;background:rgba(0,0,0,.42)}
+.q-row.now .q-eq{display:flex}
+.q-eq i{display:block;width:3px;height:30%;background:#fff;border-radius:1px;animation:q-bounce .9s ease-in-out infinite;animation-play-state:paused}
+.q-eq i:nth-child(2){animation-delay:-.3s}
+.q-eq i:nth-child(3){animation-delay:-.6s}
+.queue.playing .q-eq i{animation-play-state:running}
+@keyframes q-bounce{0%,100%{height:22%}50%{height:62%}}
+
+/* swipe a row left: it slides away and a red "Remove" shows underneath */
+.q-row::after{content:'Remove';position:absolute;right:22px;top:50%;transform:translateY(-50%);color:#fff;font-size:13px;font-weight:500;opacity:0;pointer-events:none}
+.q-row.swiping{background:#e53935}
+.q-row.swiping .q-in{opacity:1}
+.q-row.swiping::after{opacity:1}
+
+/* drag to reorder */
+.q-row.shifting{transition:transform .15s ease}
+.q-row.dragging{position:relative;z-index:3;box-shadow:0 4px 14px rgba(0,0,0,.28);transition:none;cursor:grabbing}
+.q-row.dragging .q-in{background:#fff}
+
+.q-empty{padding:32px 24px;text-align:center;color:var(--text-muted);font-size:13px;line-height:1.6}
+.q-empty .btn-solid{margin-top:12px}
+
+/* "Now playing" pill: appears when the playing song has scrolled out of view */
+.q-now-pill{position:absolute;left:50%;bottom:14px;z-index:4;display:inline-flex;align-items:center;gap:6px;padding:8px 16px 8px 10px;border:0;border-radius:20px;background:var(--primary-orange);color:#fff;font:500 13px Roboto,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:pointer;opacity:0;pointer-events:none;transform:translate(-50%,8px);transition:opacity .15s,transform .15s}
+.q-now-pill.show{opacity:1;pointer-events:auto;transform:translate(-50%,0)}
+.q-now-pill .material-icons{font-size:18px}
+
+.q-backdrop{display:none}
+
+@media (max-width:768px){
+  .q-backdrop{display:block;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.5);z-index:519;opacity:0;visibility:hidden;transition:opacity .25s,visibility 0s .25s}
+  .q-backdrop.show{opacity:1;visibility:visible;transition:opacity .25s}
+
+  /* a bottom sheet: slides up, dims what is behind, drag its top down to close */
+  .queue{left:0;right:0;bottom:0;top:48px;width:auto;max-height:none;z-index:520;display:flex;border-radius:16px 16px 0 0;box-shadow:0 -6px 28px rgba(0,0,0,.35);overflow:hidden;
+         transform:translateY(105%);visibility:hidden;transition:transform .3s cubic-bezier(.2,.8,.2,1),visibility 0s .3s}
+  .queue.open{transform:none;visibility:visible;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+  .q-grab{display:flex;justify-content:center;flex-shrink:0;padding:10px 0 2px;touch-action:none}
+  .q-grab span{width:40px;height:4px;border-radius:2px;background:#d0d0d0}
+  .queue .pop-head{border-bottom:0;padding:6px 8px 8px 20px;touch-action:none}
+  .q-head-title{font-size:20px}
+  .q-head-sub{font-size:13px}
+  .q-head-actions{gap:6px}
+  .q-head-actions a{padding:0 10px;height:40px;font-size:14px}
+  .q-head-actions #q-close{width:40px;padding:0;justify-content:center;border-radius:50%;background:#f1f1f1}
+  .q-hint{display:flex;align-items:center;gap:4px;flex-shrink:0;padding:0 20px 10px;font-size:11.5px;color:var(--text-muted)}
+  .q-hint .material-icons{font-size:16px}
+  .queue.no-hint .q-hint{display:none}
+  .queue .list{border-top:1px solid var(--border-color);padding-bottom:72px}
+
+  .q-in{gap:14px;min-height:64px;padding:8px 4px 8px 20px}
+  .q-art{width:48px;height:48px;border-radius:6px}
+  .q-art>.material-icons{font-size:26px}
+  .q-title{font-size:15px}
+  .q-main small{font-size:13px}
+  .q-x{display:none}
+  .q-handle{order:0;margin:0;padding:16px 12px}
+  .q-handle .material-icons{font-size:24px}
+}
+

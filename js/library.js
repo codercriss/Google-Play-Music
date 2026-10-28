@@ -53,6 +53,39 @@
     }
     function invalidate() { derived = null; }
 
+    /* The colour shown for anything with no cover picture. One rule everywhere, so the same
+       album or song is the same colour in the library, the queue and both players: an album is
+       coloured by artist + album; a song with no album by its title + artist. */
+    var PAL = [['#ef6c00', '#ffb74d'], ['#5e35b1', '#9575cd'], ['#00897b', '#4db6ac'], ['#d81b60', '#f48fb1'],
+               ['#1e88e5', '#64b5f6'], ['#43a047', '#a5d6a7'], ['#546e7a', '#b0bec5'], ['#f4511e', '#ffab91']];
+    function hashStr(s) { var h = 0; s = String(s); for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
+    function placeholder(seed) { var p = PAL[hashStr(seed) % PAL.length]; return 'linear-gradient(135deg,' + p[0] + ',' + p[1] + ')'; }
+    function seedOf(t) { return t.album ? norm(t.albumArtist || t.artist) + '|' + norm(t.album) : 't|' + norm(t.title) + '|' + norm(t.artist); }
+
+
+    /* ------------------------------------------------------------ tidying songs added earlier */
+
+    var TIDY_KEY = 'gpm.tidy', TIDY_VERSION = '1';
+
+    /* Songs saved by an earlier version may still carry website promo or stray dashes in their
+       names. Tidy them once; the original text is kept in rawNames. */
+    function tidyExisting(records) {
+        try { if (localStorage.getItem(TIDY_KEY) === TIDY_VERSION) return Promise.resolve(); } catch (e) { /* no storage: just run */ }
+        var changed = [];
+        records.forEach(function (t) {
+            var title = Tags.tidy(t.title) || t.title;
+            var artist = Tags.tidy(t.artist) || 'Unknown artist';
+            var album = Tags.tidyAlbum(t.album);
+            var albumArtist = Tags.tidy(t.albumArtist);
+            if (title === t.title && artist === t.artist && album === t.album && albumArtist === (t.albumArtist || '')) return;
+            if (!t.rawNames) t.rawNames = { title: t.title, artist: t.artist, album: t.album };
+            t.title = title; t.artist = artist; t.album = album; t.albumArtist = albumArtist;
+            changed.push(t);
+        });
+        return Store.updateTracks(changed).then(function () {
+            try { localStorage.setItem(TIDY_KEY, TIDY_VERSION); } catch (e) { /* ignore */ }
+        });
+    }
 
     /* ------------------------------------------------------------ start up */
 
@@ -66,7 +99,7 @@
                 byId.set(t.id, t);
                 if (t.coverKey) coverKeys.add(t.coverKey);
             });
-            if (expired.length) return purgeRecords(expired);
+            return (expired.length ? purgeRecords(expired) : Promise.resolve()).then(function () { return tidyExisting(live.concat(trashed)); });
         }).catch(function (e) {
             unavailable = e || new Error('The song database is not available');
             console.warn('Library unavailable:', unavailable);
@@ -126,8 +159,14 @@
     async function importOne(file, sigs) {
         var tags = await Tags.read(file);
         var fn = Tags.fromFilename(file.name);
-        var title = tags.title || fn.title || file.name;
-        var artist = tags.artist || tags.albumArtist || fn.artist || 'Unknown artist';
+        var raw = tags.raw || { title: '', artist: '', album: '', albumArtist: '' };
+        // what the file really says (this is what duplicate detection has always used)
+        var rawTitle = raw.title || fn.title || file.name;
+        var rawArtist = raw.artist || raw.albumArtist || fn.artist || 'Unknown artist';
+        var rawAlbum = raw.album || '';
+        // what is shown: the same, with website promo and stray dashes tidied away
+        var title = tags.title || Tags.tidy(fn.title) || rawTitle;
+        var artist = tags.artist || tags.albumArtist || Tags.tidy(fn.artist) || 'Unknown artist';
         var album = tags.album || '', albumArtist = tags.albumArtist || '';
 
         var type = mimeFor(file);
@@ -136,7 +175,7 @@
         if (probe.unsupported) { var e = new Error('unsupported'); e.userMessage = 'this device can\u2019t play this kind of file'; throw e; }
         var duration = isFinite(probe.duration) && probe.duration > 0 ? probe.duration : (tags.duration || 0);
 
-        var sig = [norm(title), norm(artist), norm(album), file.size].join('|');
+        var sig = [norm(rawTitle), norm(rawArtist), norm(rawAlbum), file.size].join('|');
         var dup = sigs.get(sig);
         if (dup) {
             if (dup.deletedAt) { await restore([dup.id]); return { status: 'restored', track: dup }; }
@@ -156,6 +195,7 @@
             size: file.size, type: type, fileName: file.name, addedAt: Date.now(), lastPlayedAt: 0, playCount: 0, deletedAt: 0,
             coverKey: (coverEntry || coverKeys.has(key)) ? key : '', sig: sig
         };
+        if (rawTitle !== title || rawArtist !== artist || rawAlbum !== album) meta.rawNames = { title: rawTitle, artist: rawArtist, album: rawAlbum };   // so tidying can always be undone
 
         try { await Store.addTrack(meta, audio, coverEntry); }
         catch (err) {
@@ -428,7 +468,7 @@
     /* ------------------------------------------------------------ public API */
 
     global.Library = {
-        init: init, on: on, TRASH_DAYS: TRASH_DAYS,
+        init: init, on: on, TRASH_DAYS: TRASH_DAYS, placeholder: placeholder, seedOf: seedOf,
         importFiles: importFiles,
         all: function () { return live; }, trash: function () { return trashed; }, get: function (id) { return byId.get(id) || null; },
         count: function () { return live.length; }, isUnavailable: function () { return unavailable; },

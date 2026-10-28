@@ -73,7 +73,7 @@
         return new Blob([bytes], { type: mime });
     }
     function empty() {
-        return { title: '', artist: '', album: '', albumArtist: '', genre: '', year: null, track: null, disc: null, duration: null, cover: null, format: null };
+        return { title: '', artist: '', album: '', albumArtist: '', genre: '', year: null, track: null, disc: null, duration: null, cover: null, format: null, raw: { title: '', artist: '', album: '', albumArtist: '' } };
     }
 
 
@@ -379,7 +379,45 @@
     }
 
 
+
+    /* ------------------------------------------------------------ tidying promo text
+       Music sites often stamp their name into the tags: "Song || TrendyBeatz.com",
+       "Artist -", an album called "IG: @someone". These tidy that up without ever
+       touching a real name or title. Everything here is safe to run twice. */
+
+    var TLD = '(?:com|net|org|ng|co|info|biz|fm|tv|me|io|gh|za|ke|ug|tz|co\\.za|com\\.ng|com\\.gh)';
+    var DOMAIN = new RegExp('(?:\\bwww\\.|\\b[a-z0-9][a-z0-9-]*\\.' + TLD + '\\b)', 'i');
+    var BRACKET_URL = new RegExp('\\s*[\\(\\[][^\\)\\]]*(?:\\bwww\\.|\\b[a-z0-9][a-z0-9-]*\\.' + TLD + '\\b)[^\\)\\]]*[\\)\\]]', 'ig');
+    var ONLY_URL = new RegExp('^(?:https?:\\/\\/)?(?:www\\.)?[a-z0-9][a-z0-9-]*\\.' + TLD + '(?:\\/\\S*)?$', 'i');
+    var SOCIAL = /^(?:ig|insta(?:gram)?|twitter|tw|fb|facebook|snap(?:chat)?|tiktok)\s*[:@]|@\w{3,}/i;     // "IG: @someone", "@handle"
+    var CALL_TO_ACTION = /^(?:follow|visit|download|stream|listen)\b/i;
+    var SEP = /^[\s\-\u2013\u2014_|:\u00b7]+|[\s\-\u2013\u2014_|:\u00b7]+$/g;      // dashes, bars, colons and spaces at either end
+
+    function tidy(s) {
+        s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+        // "Title || site.com" and "Title | site.com / more": cut from the bar that is followed by a web address
+        var re = /\s*\|+\s*/g, m;
+        while ((m = re.exec(s))) {
+            if (DOMAIN.test(s.slice(m.index))) { s = s.slice(0, m.index); break; }
+        }
+        s = s.replace(BRACKET_URL, '');                                  // "Song [www.site.com]"
+        return s.replace(SEP, '');
+    }
+    /* Albums also lose pure promo ("IG: @someone", "TopGhanaMusic.com") */
+    function tidyAlbum(s) {
+        s = tidy(s);
+        return (ONLY_URL.test(s) || SOCIAL.test(s) || (CALL_TO_ACTION.test(s) && DOMAIN.test(s))) ? '' : s;
+    }
+
     /* ------------------------------------------------------------ entry points */
+
+    /* Keep what the file really says (raw) and hand back the tidied version. */
+    function finish(out) {
+        out.raw = { title: out.title, artist: out.artist, album: out.album, albumArtist: out.albumArtist };
+        out.title = tidy(out.title); out.artist = tidy(out.artist);
+        out.albumArtist = tidy(out.albumArtist); out.album = tidyAlbum(out.album);
+        return out;
+    }
 
     function read(file) {
         var out = empty();
@@ -393,8 +431,8 @@
             else if (ascii(head, 0, 4) === 'fLaC') { out.format = 'flac'; job = readFlac(file, out); }
             else if (ascii(head, 0, 4) === 'RIFF' && ascii(head, 8, 4) === 'WAVE') { out.format = 'wav'; job = readWav(file, out); }
             else if (ascii(head, 0, 4) === 'OggS') { out.format = 'ogg'; job = readOgg(file, out); }
-            else return out;
-            return job.then(function () { return out; });
+            else return finish(out);
+            return job.then(function () { return finish(out); });
         }).catch(function (e) {
             if (global.console) console.warn('Could not read tags from', file && file.name, e);
             return out;
@@ -413,5 +451,5 @@
         return { artist: '', title: base || String(filename || '') };
     }
 
-    global.Tags = { read: read, fromFilename: fromFilename };
+    global.Tags = { read: read, fromFilename: fromFilename, tidy: tidy, tidyAlbum: tidyAlbum };
 })(typeof window !== 'undefined' ? window : globalThis);

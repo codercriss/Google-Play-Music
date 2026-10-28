@@ -33,9 +33,11 @@
     }
     function fmtDur(sec) { return isFinite(sec) ? fmt(sec) : '\u2013:\u2013'; }
 
-    var PAL = [['#ef6c00', '#ffb74d'], ['#5e35b1', '#9575cd'], ['#00897b', '#4db6ac'], ['#d81b60', '#f48fb1'],
-               ['#1e88e5', '#64b5f6'], ['#43a047', '#a5d6a7'], ['#546e7a', '#b0bec5'], ['#f4511e', '#ffab91']];
-    function gradient(i) { var p = PAL[i % PAL.length]; return 'linear-gradient(135deg,' + p[0] + ',' + p[1] + ')'; }
+    /* The colour for a song with no cover is chosen by the library (one rule for the whole app). */
+    function placeholderFor(t) {
+        if (!window.Library) return '#bbb';
+        return Library.placeholder(Library.seedOf({ title: t.title, artist: t.artist, albumArtist: t.albumArtist, album: t.album }));
+    }
 
     function goAdd() {
         qEl.classList.remove('open');
@@ -66,7 +68,7 @@
             var node = p[0];
             if (!node) return;
             if (cover) { node.style.background = 'url("' + cover + '") center / cover no-repeat'; node.innerHTML = ''; return; }
-            node.style.background = track ? gradient(track.trackId) : '#111';
+            node.style.background = track ? placeholderFor(track) : '#111';
             node.innerHTML = '<i class="material-icons" style="font-size:' + p[1] + 'px;color:rgba(255,255,255,' + (track ? '.9' : '.3') + ')">music_note</i>';
         });
     }
@@ -176,47 +178,122 @@
     document.addEventListener('visibilitychange', function () { if (!document.hidden) { renderTime(); kick(); } });
 
 
-    /* ------------------------------------------------------------ queue panel */
+    /* ------------------------------------------------------------ queue panel
+       Desktop: a panel above the player bar. Phone: a bottom sheet with a dimmed backdrop
+       (drag its top down to close; drag a song's handle to reorder; swipe a song left to remove). */
 
-    var qList = $('.list', qEl), qHead = $('.pop-head', qEl);
-    var dragging = false, renderPending = false;
+    var qList = $('.list', qEl), qSub = $('.q-head-sub', qEl), qNow = $('#q-now', qEl);
+    var dragging = false, renderPending = false, swipedAt = 0;
+    var HINT_KEY = 'gpm.qhint';
 
+    function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
+    function totalLabel(items) {
+        var sec = items.reduce(function (n, t) { return n + (isFinite(t.duration) ? t.duration : 0); }, 0);
+        if (!sec) return '';
+        var m = Math.round(sec / 60);
+        return ' \u00b7 ' + (m >= 60 ? Math.floor(m / 60) + ' hr ' + (m % 60) + ' min' : Math.max(1, m) + ' min');
+    }
+
+    /* The rows are only built while the panel is open. Building thousands of them on every tap on a
+       song would delay the music for nothing, because nobody can see a closed panel. */
+    var qDirty = true;
     function renderQueue() {
-        if (dragging) { renderPending = true; return; }
         var s = P.getState(), n = s.queue.length;
+        setText(qSub, n ? plural(n, 'song') + totalLabel(s.queue) : '');
+        if (dragging) { renderPending = true; return; }
+        if (n && !qEl.classList.contains('open')) { qDirty = true; return; }       // built when it is opened
+        buildQueue(s);
+    }
+    function buildQueue(s) {
+        var n = s.queue.length;
+        qDirty = false;
+        markedIndex = -2;                                    // new rows: mark them all
         if (!n) {
             qList.innerHTML = '<div class="q-empty">Your queue is empty.<br><button class="btn-solid" data-act="add-music">Add music</button></div>';
         } else {
             qList.innerHTML = s.queue.map(function (t, i) {
-                return '<div class="q-row' + (i === s.index ? ' now' : '') + (t.failed ? ' failed' : '') + '" data-i="' + i + '">' +
-                    '<span class="q-handle" title="Drag to reorder"><i class="material-icons">drag_handle</i></span>' +
-                    '<span class="q-art" data-cover="' + esc(t.coverKey) + '"></span>' +
+                return '<div class="q-row' + (t.failed ? ' failed' : '') + '" data-i="' + i + '"><div class="q-in">' +
+                    '<span class="q-art" data-cover="' + esc(t.coverKey) + '" style="background:' + placeholderFor(t) + '">' +
+                        '<i class="material-icons">music_note</i><span class="q-eq"><i></i><i></i><i></i></span></span>' +
                     '<div class="q-main"><div class="q-title">' + esc(t.title) + '</div><small>' + esc(t.artist) + '</small></div>' +
                     '<span class="q-time">' + (t.failed ? 'can\u2019t play' : fmtDur(t.duration)) + '</span>' +
-                    '<span class="q-x" data-act="remove" title="Remove"><i class="material-icons">close</i></span></div>';
+                    '<span class="q-x" data-act="remove" title="Remove"><i class="material-icons">close</i></span>' +
+                    '<span class="q-handle" title="Drag to reorder"><i class="material-icons">drag_handle</i></span></div></div>';
             }).join('');
             if (window.hydrateCovers) window.hydrateCovers(qList);
         }
         markNow();
     }
 
-    /* Cheap update for "the song changed": move the highlight and the count, nothing else. */
+    /* Cheap update for "the song changed": only the rows between the old and the new position are
+       touched (two rows for a normal "next"), however long the queue is. */
+    var markedIndex = -2;                                        // -2: the rows are new, so mark every one
     function markNow() {
-        var s = P.getState(), n = s.queue.length;
-        if (qHead && qHead.firstChild) qHead.firstChild.textContent = n ? 'Queue \u00b7 ' + n + (n === 1 ? ' song' : ' songs') : 'Queue';
-        var old = $('.q-row.now', qList);
-        if (old) old.classList.remove('now');
-        var row = n ? qList.children[s.index] : null;
-        if (row && row.classList.contains('q-row')) row.classList.add('now');
+        var s = P.getState(), rows = qList.children, n = rows.length, idx = s.index;
+        if (n && rows[0].classList.contains('q-row')) {
+            var lo = 0, hi = n - 1;
+            if (markedIndex !== -2) {
+                if (idx === markedIndex) { lo = 1; hi = 0; }     // nothing moved
+                else { lo = Math.max(0, Math.min(idx, markedIndex)); hi = Math.min(n - 1, Math.max(idx, markedIndex)); }
+            }
+            for (var i = lo; i <= hi; i++) {
+                rows[i].classList.toggle('now', i === idx);
+                rows[i].classList.toggle('past', i < idx);
+            }
+            markedIndex = idx;
+        }
+        qEl.classList.toggle('playing', s.playing);
+        updatePill();
     }
 
-    function scrollToNow() {
+    function scrollToNow(smooth) {
         if (!qEl.classList.contains('open')) return;
         var n = $('.q-row.now', qList);
-        if (n && n.scrollIntoView) n.scrollIntoView({ block: 'nearest' });
+        if (n && n.scrollIntoView) n.scrollIntoView({ block: isPhoneLayout() ? 'center' : 'nearest', behavior: smooth ? 'smooth' : 'auto' });
     }
 
+    /* "Now playing" pill: only when the playing song is out of view */
+    var pillFrame = 0;
+    function updatePill() {
+        if (!qNow) return;
+        cancelAnimationFrame(pillFrame);
+        pillFrame = requestAnimationFrame(function () {
+            var row = $('.q-row.now', qList);
+            if (!row || !qEl.classList.contains('open')) { qNow.classList.remove('show'); return; }
+            var a = row.getBoundingClientRect(), b = qList.getBoundingClientRect();
+            var above = a.bottom < b.top + 8, below = a.top > b.bottom - 8;
+            qNow.classList.toggle('show', above || below);
+            setText($('.material-icons', qNow), above ? 'arrow_upward' : 'arrow_downward');
+        });
+    }
+    qList.addEventListener('scroll', updatePill, { passive: true });
+    if (qNow) qNow.addEventListener('click', function () { scrollToNow(true); });
+
+    function hintSeen() {
+        try { localStorage.setItem(HINT_KEY, '1'); } catch (e) { /* ignore */ }
+        qEl.classList.add('no-hint');
+    }
+    try { if (localStorage.getItem(HINT_KEY) === '1') qEl.classList.add('no-hint'); } catch (e) { /* ignore */ }
+
+    /* Backdrop (phone) + what happens whenever the panel opens or closes, however it was toggled */
+    var backdrop = document.createElement('div');
+    backdrop.className = 'q-backdrop';
+    document.body.appendChild(backdrop);
+    backdrop.addEventListener('click', function () { qEl.classList.remove('open'); });
+    var wasOpen = false;
+    new MutationObserver(function () {
+        var open = qEl.classList.contains('open');
+        backdrop.classList.toggle('show', open);
+        if (open && !wasOpen) setTimeout(function () {
+            if (qDirty) buildQueue(P.getState());
+            scrollToNow(false); updatePill();
+        }, 0);
+        wasOpen = open;
+        updatePill();
+    }).observe(qEl, { attributes: true, attributeFilter: ['class'] });
+
     qList.addEventListener('click', function (e) {
+        if (Date.now() - swipedAt < 400) return;                         // a swipe also ends in a click: ignore it
         if (e.target.closest('[data-act="add-music"]')) { goAdd(); return; }
         var row = e.target.closest('.q-row');
         if (!row) return;
@@ -231,7 +308,7 @@
         if (P.getState().queue.length) { P.clear(); toast('Queue cleared'); }
     });
 
-    /* Drag a row by its handle to reorder (mouse and touch). */
+    /* Drag a song by its handle to reorder (mouse and touch). */
     qList.addEventListener('pointerdown', function (e) {
         var handle = e.target.closest('.q-handle');
         var row = handle && handle.closest('.q-row');
@@ -271,7 +348,7 @@
             dragging = false;
             var stale = renderPending;
             renderPending = false;
-            if (commit && to !== from) P.move(from, to);      // emits 'queue', which redraws
+            if (commit && to !== from) { hintSeen(); P.move(from, to); }   // emits 'queue', which redraws
             else if (stale) renderQueue();
         }
         function onUp() { end(true); }
@@ -281,12 +358,69 @@
         handle.addEventListener('pointercancel', onCancel);
     });
 
-    function toggleQueue() {
-        qEl.classList.toggle('open');
-        scrollToNow();
+    /* Phone: swipe a song to the left to remove it. */
+    var swipe = null;
+    qList.addEventListener('pointerdown', function (e) {
+        if (!isPhoneLayout() || e.pointerType === 'mouse' || e.target.closest('.q-handle')) return;
+        var row = e.target.closest('.q-row');
+        if (!row) return;
+        swipe = { row: row, inner: row.firstElementChild, x: e.clientX, y: e.clientY, id: e.pointerId, mode: '', dx: 0 };
+    });
+    qList.addEventListener('pointermove', function (e) {
+        var sw = swipe;
+        if (!sw || e.pointerId !== sw.id) return;
+        var dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+        if (!sw.mode) {
+            if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+            sw.mode = (dx < 0 && Math.abs(dx) > Math.abs(dy) * 1.5) ? 'swipe' : 'scroll';      // decide once: sideways swipe, or let it scroll
+            if (sw.mode === 'swipe') {
+                sw.row.classList.add('swiping'); sw.inner.style.transition = 'none';
+                try { qList.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ }
+            }
+        }
+        if (sw.mode === 'swipe') { sw.dx = Math.min(0, dx); sw.inner.style.transform = 'translateX(' + sw.dx + 'px)'; }
+    });
+    function endSwipe(commit) {
+        var sw = swipe;
+        swipe = null;
+        if (!sw || sw.mode !== 'swipe') return;
+        swipedAt = Date.now();
+        var go = commit && sw.dx < -Math.max(90, sw.row.offsetWidth * 0.3);
+        sw.inner.style.transition = 'transform .18s ease';
+        sw.inner.style.transform = go ? 'translateX(-105%)' : '';
+        setTimeout(function () {
+            if (go) { hintSeen(); P.removeAt(+sw.row.dataset.i); }
+            else { sw.row.classList.remove('swiping'); sw.inner.style.transition = ''; }
+        }, go ? 170 : 200);
     }
-    var desktopQueueIcon = $$('.player-right > *')[2];
-    if (desktopQueueIcon) desktopQueueIcon.addEventListener('click', function () { setTimeout(scrollToNow, 0); });
+    qList.addEventListener('pointerup', function () { endSwipe(true); });
+    qList.addEventListener('pointercancel', function () { endSwipe(false); });
+
+    /* Phone: drag the sheet's top edge down to close it. */
+    var sheet = null;
+    qEl.addEventListener('pointerdown', function (e) {
+        if (!isPhoneLayout() || !e.target.closest('.q-grab, .pop-head') || e.target.closest('a')) return;
+        sheet = { y: e.clientY, id: e.pointerId, dy: 0, t: Date.now() };
+        qEl.style.transition = 'none';
+        try { qEl.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ }
+    });
+    qEl.addEventListener('pointermove', function (e) {
+        if (!sheet || e.pointerId !== sheet.id) return;
+        sheet.dy = Math.max(0, e.clientY - sheet.y);
+        qEl.style.transform = 'translateY(' + sheet.dy + 'px)';
+    });
+    function endSheet(commit) {
+        if (!sheet) return;
+        var d = sheet;
+        sheet = null;
+        qEl.style.transition = '';
+        qEl.style.transform = '';
+        if (commit && (d.dy > 90 || (d.dy > 30 && Date.now() - d.t < 250))) qEl.classList.remove('open');
+    }
+    qEl.addEventListener('pointerup', function () { endSheet(true); });
+    qEl.addEventListener('pointercancel', function () { endSheet(false); });
+
+    function toggleQueue() { qEl.classList.toggle('open'); }
 
 
     /* ------------------------------------------------------------ buttons + keys */
@@ -344,7 +478,7 @@
 
     P.on('track', function () { renderTrack(); markNow(); scrollToNow(); });
     P.on('queue', renderQueue);
-    P.on('state', function () { renderState(); kick(); });
+    P.on('state', function () { renderState(); kick(); qEl.classList.toggle('playing', P.getState().playing); });
     P.on('time', renderTime);
     P.on('mode', renderMode);
     P.on('volume', renderVolume);

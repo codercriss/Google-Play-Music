@@ -27,16 +27,16 @@ Opening `index.html` directly also works, but offline support only runs on `http
 | --- | --- | --- |
 | `index.html` | ~21 KB | The page head (install and iPhone tags) and all the base markup: header, sidebar, **Listen Now** and **My Library** screens, desktop player bar, mobile full-screen player, mobile bottom nav |
 | `css/styles.css` | ~29 KB | Variables, layout, header, sidebar, cards, song rows, player bar, and all mobile rules (two breakpoints: 992 px and 768 px) |
-| `css/components.css` | ~16 KB | Popup menus, library tabs, library screens, settings/help panels, modal, queue panel, toast |
+| `css/components.css` | ~21 KB | Popup menus, library tabs, library screens, settings/help panels, modal, the queue panel and phone sheet, toast |
 | `css/ios.css` | ~7 KB | iPhone-only fixes: safe areas, status-bar strip, screen height (see iPhone layout) |
 | `js/app.js` | ~5 KB | Screen switching, mobile drawer, mobile full-screen player (open, swipe-down close) |
 | `js/ui.js` | ~21 KB | The menus and the sample screens: all dropdowns, modal, toast, Settings, Help, sample playlists. Also empty containers for the library screens, and `window.AppUI` (menu helpers shared with `library-ui.js`) |
-| `js/tags.js` | ~22 KB | Reads song info and cover art from the file's own bytes (MP3, M4A, FLAC, WAV, Ogg) |
+| `js/tags.js` | ~25 KB | Reads song info and cover art from the file's own bytes (MP3, M4A, FLAC, WAV, Ogg), and tidies website promo out of names |
 | `js/store.js` | ~6 KB | The on-device database (IndexedDB): songs' info, audio files, cover images |
-| `js/library.js` | ~24 KB | Your library: import, duplicates, covers, grouping, search, sorting, trash, play counts, storage numbers. Never touches the page |
+| `js/library.js` | ~27 KB | Your library: import, duplicates, covers, the shared placeholder-colour rule, grouping, search, sorting, trash, play counts, storage numbers. Never touches the page |
 | `js/player.js` | ~24 KB | The playback engine: the one audio element, the queue, shuffle/repeat, lock-screen controls. Never touches the page |
-| `js/player-ui.js` | ~17 KB | Draws the engine on screen: player bars, cover art, progress, queue panel with drag-to-reorder, keyboard shortcuts |
-| `js/library-ui.js` | ~32 KB | The library screens: Songs / Artists / Albums / Genres tabs, album, artist and genre pages, search, Trash, Add music with import progress and storage panel, the song menu. Connects the library to the player |
+| `js/player-ui.js` | ~23 KB | Draws the engine on screen: player bars, cover art, progress, the queue (panel on a computer, bottom sheet on a phone, with drag, swipe and the Now playing pill), keyboard shortcuts |
+| `js/library-ui.js` | ~31 KB | The library screens: Songs / Artists / Albums / Genres tabs, album, artist and genre pages, search, Trash, Add music with import progress and storage panel, the song menu. Connects the library to the player |
 | `js/pwa.js` | ~5 KB | Registers the service worker, measures the iOS 26 bottom strip, hidden diagnostic panel |
 | `sw.js` | ~7 KB | Service worker: saves the app for offline use (see Offline and install) |
 | `manifest.webmanifest` | <1 KB | Install info: name, colours, icons |
@@ -69,7 +69,7 @@ The player has a real state (inside `player.js`), and the screen is drawn from i
 - **Desktop:** fixed 64 px header, a sidebar on the left, scrolling content in the middle, a fixed 90 px player bar at the bottom.
 - **Mobile (768 px and under):** the sidebar becomes a slide-out drawer, a 56 px bottom nav appears, the player bar becomes a ~70 px mini player sitting above the bottom nav, and tapping it opens a full-screen player that slides up.
 - The page itself never scrolls (`body` is `overflow: hidden`); the `.main-content` area scrolls.
-- Stacking order, low to high: header 100, player bar 200, queue (desktop) 250, bottom nav 300, drawer overlay 350, drawer 400, queue (mobile) 450, full-screen player 500, its control bar 510, popup menus 1000, modal 1100, toast 1200, iPhone status-bar strip 9999 (iPhones only).
+- Stacking order, low to high: header 100, player bar 200, queue (desktop) 250, bottom nav 300, drawer overlay 350, drawer 400, full-screen player 500, its control bar 510, the phone queue's dimmed backdrop 519, the phone queue sheet 520, popup menus 1000, modal 1100, toast 1200, iPhone status-bar strip 9999 (iPhones only).
 
 ---
 
@@ -102,7 +102,15 @@ Switching screens means showing one `.content-view` panel and hiding the others.
 
 **New playlist dialog.** A modal added to the page by `ui.js`. Nothing is saved when you press Create.
 
-**Queue panel.** A side panel (full-screen on mobile). `ui.js` creates the empty panel; `player-ui.js` fills it with the real queue. On a phone it sits above the full-screen player so it can be opened from there.
+**Queue panel.** `ui.js` creates the empty panel (header, a hint line, the list, a "Now playing" pill); `player-ui.js` fills it with the real queue.
+- **Computer:** a 340 px panel above the player bar. Each row has a drag handle on the left, the cover, title and artist, the length, and a × to remove it.
+- **Phone:** a **bottom sheet**. It slides up from the bottom (300 ms), dims the page behind it with a backdrop, and sits above the full-screen player so it can be opened from there. The top edge clears the status bar. Rows are 64 px tall with a 48 px cover and the drag handle on the right.
+  - **Close it** by tapping the dimmed area, the close button, or dragging the top edge (the grabber and header) down. A short or slow drag snaps back.
+  - **Remove a song** by swiping it left (a red "Remove" shows underneath). It must go past about 30% of the width; a shorter swipe snaps back, and a swipe never counts as a tap that starts the song.
+  - **Reorder** by dragging the handle.
+  - A hint ("Drag ≡ to reorder · swipe a song left to remove it") shows until you have used either gesture once.
+- **Both:** the playing song is highlighted and shows moving equaliser bars on its cover while playing (still when paused); songs already played are dimmed. The header shows the song count and total time. When the playing song is scrolled out of view, a "Now playing" pill (with an up or down arrow) appears; tapping it scrolls back. The panel opens already scrolled to the playing song.
+- **The rows are built only when the panel opens.** A closed panel can't be seen, and building thousands of rows on every tap on a song would delay the music. Changing songs afterwards only moves the highlight; the rows are rebuilt only when the list itself changes.
 
 **Song menu.** Real songs get a working menu from `library-ui.js` (see Your library). The sample playlist rows still get their three-dot buttons from `addKebabs()` in `ui.js`, and those menu items only show a toast.
 
@@ -196,7 +204,7 @@ Adding anything new that is fixed to the top or bottom of the screen means givin
 
 **Keyboard shortcuts (computer).** Space plays or pauses, Left/Right jump 5 seconds, Shift+Left/Right go to the previous or next song, M mutes. They are ignored while typing in a box, and don't take over Space until something is loaded.
 
-**Queue panel.** Click a row to play it, the x to remove it, or drag the handle to reorder (the playing song keeps playing and the pointer follows it). Dragging doesn't auto-scroll a long list yet.
+**Queue panel.** Tap a row to play it (or pause, if it is the playing one), drag the handle to reorder (the playing song keeps playing and the pointer follows it), and on a phone swipe a song left to remove it (on a computer, use the ×). Dragging doesn't auto-scroll a long list yet. See Reusable pieces for the full description.
 
 **Sample songs.** The rows in the sample playlists (sidebar) are still placeholders with no audio, so tapping one says so instead of doing nothing. Real songs are recognised by a `data-track` attribute on their row.
 
@@ -218,7 +226,14 @@ At start-up all the small `tracks` records are read into memory. Browsing, sorti
 
 **Importing.** For each chosen file, one at a time (so the screen stays responsive and shows progress):
 1. **Tags** (`tags.js`) are read from the file itself, touching only the bytes where tags live: MP3 (ID3v2.2, 2.3, 2.4 and ID3v1), M4A/MP4, FLAC, WAV and Ogg (text only). Cover art comes out too; the front cover is preferred. A damaged or tag-less file just returns empty fields; it never throws.
-2. **File name fallback** for anything missing: `Artist - Title.mp3` is split, a leading track number such as `03_` is dropped, and download clutter such as `(Official Music Video)`, `[Official Audio]` or `(Lyrics)` is removed. `(feat. someone)` is kept. No artist at all becomes "Unknown artist".
+2. **Tidy-up and file name fallback.** Music download sites often stamp themselves into the tags. These are cleaned so names read properly, and the original text is always kept (`rawNames` on the song):
+   - A bar followed by a web address is cut off: `Body (Remix) || TrendyBeatz.com` becomes `Body (Remix)`, and `KU LO SA (Full Version) | val9ja.com` becomes `KU LO SA (Full Version)`. A bar with no web address after it is left alone.
+   - Dashes, bars and colons dangling at either end go: `Oxlade –` becomes `Oxlade`. Real names are never altered.
+   - Web addresses in brackets (`[www.site.com]`) go.
+   - An album that is just a website, or a social-media handle (`IG: @someone`, `@handle`), or "Visit site.com", is dropped, so those songs fall under "Unknown album". Albums that merely start with a word like "Instagram" or "Follow" are kept.
+   - If a tag is missing, the file name is used: `Artist - Title.mp3` is split, a leading track number such as `03_` is dropped, and clutter such as `(Official Music Video)`, `[Official Audio]` or `(Lyrics)` is removed. `(feat. someone)` is kept. No artist at all becomes "Unknown artist".
+   - **Songs added before this existed** are tidied once the first time the app starts (a flag in the browser's storage stops it repeating), and the originals are kept.
+   - **Duplicate detection uses the original text**, not the tidied text, so a file you added earlier is still recognised as a duplicate after tidying.
 3. **Check it plays.** A short load of the audio (the same way the player will use it) gives the true length and proves this device can decode it. A file the device can't play (for example Ogg on an iPhone, or a damaged file) is refused with a reason rather than saved as a dead entry.
 4. **Duplicates.** Two files are the same song if title, artist, album and byte size all match. Duplicates are skipped and counted. A match that is in the Trash is brought back instead.
 5. **Cover.** Shrunk to at most 512 pixels so a big library stays light. One cover is kept per album, however many songs share it.
@@ -236,7 +251,9 @@ The browser is also asked to treat the library as persistent (`storage.persist()
 
 **Trash.** Removing a song moves it to the Trash and takes it out of the queue (playback carries on if other songs are queued). Restore brings it back with its play count. Songs are deleted for good after 30 days, or immediately with Delete or Empty trash (both ask first). Deleting also removes a cover nobody else uses.
 
-**Covers on screen.** Any element marked `data-cover="key"` gets its picture the moment it has loaded. Until then it shows a colour placeholder picked from the song's name.
+**Covers on screen.** Any element marked `data-cover="key"` gets its picture the moment it has loaded. Until then, and for songs with no picture at all, it shows a colour with a music note.
+
+**One colour per album, everywhere.** The placeholder colour is chosen by one rule in `library.js`, so the same thing is the same colour wherever it appears: library rows, album cards, album page, mini player, full-screen player, queue. A song **with an album** is coloured by artist + album (so all songs on an album match, as real covers would). A song **without an album** is coloured by title + artist. Artists and genres have their own colours. Before this rule the library and the players each picked a colour their own way, which is why they disagreed.
 
 **The song menu** (the three dots on a song): Play next, Add to queue, Add to playlist (a placeholder until playlists exist), Go to artist, Go to album, Remove from library.
 
@@ -264,6 +281,8 @@ None of these are bugs you'd see in normal use, but they matter for the phases a
 
 - **Sample content remains** on Listen Now, Instant Mixes, Shop, Settings and the sidebar playlists. Phase 4 (playlists, Listen Now from your real activity) and Phase 5 (Settings) deal with it.
 - **Reordering a very long queue by dragging** can't scroll while you drag.
+- **Opening the queue with thousands of songs queued takes a moment** (roughly half a second to a second for 2,500 on a computer, longer on a phone), because every row is built at that point. Typical queues open instantly.
+- **The name tidy-up can't catch every kind of promo text.** It handles bars followed by web addresses, web addresses in brackets, dangling separators and promo-only albums. Other patterns stay as they are until there is a way to edit names (not planned yet; the originals are kept in `rawNames`).
 - **Importing is one file at a time and needs the app open.** If iOS suspends the app mid-import, the songs already saved are kept and you can add the rest again (duplicates are skipped).
 - **No backup yet.** The library lives only on this device; clearing the site's data or deleting the Home Screen app deletes it. Phase 5.
 - **Ogg files** can't be played by iPhone, so they're refused at import there (they work on most computers). Their tags are read as text only.
@@ -273,6 +292,13 @@ None of these are bugs you'd see in normal use, but they matter for the phases a
 - **Phones in landscape get the desktop layout**, which is cramped. Phase 5.
 - **Popup menus are positioned by script and don't know about the safe areas.** A menu opened right at a screen edge could sit slightly under the home bar. Low risk; revisit if it shows up on a device.
 - **Detail pages have no browser Back.** A "My Library" link at the top returns you; the phone's swipe-back gesture leaves the app's page instead.
+
+**Fixed in Phase 3, after trying it on an iPhone**
+
+- A song with no cover picture was a different colour in the library, the mini player and the full-screen player, and plain grey in the queue: one colour rule now, and a music note in the queue too.
+- The phone queue was a cramped full-width list with a tiny grey handle: now a bottom sheet with bigger rows, swipe-to-remove, a "Now playing" pill and equaliser bars on the playing song.
+- Names carrying website promo or stray dashes (`|| TrendyBeatz.com`, `Oxlade –`): tidied, originals kept.
+- Tapping a song in a very long list built the whole queue panel before the music could start: rows are now built only when the panel is opened.
 
 **Fixed in Phase 3**
 
